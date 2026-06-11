@@ -65,7 +65,7 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
 
   if (error) {
     return (
-      <div className="bg-[#161616] border border-red-500/20 rounded-lg p-4 font-mono text-xs my-4 text-red-400">
+      <div className="bg-bg-card border border-red-500/20 rounded-lg p-4 font-mono text-xs my-4 text-red-400">
         <div className="font-semibold mb-2">⚠️ Mermaid Rendering Error</div>
         <pre className="overflow-x-auto whitespace-pre-wrap">{code}</pre>
       </div>
@@ -75,8 +75,8 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
   return (
     <div 
       ref={containerRef}
-      className="bg-[#0f0f0f] border border-[#222222] rounded-xl p-6 my-6 flex justify-center overflow-x-auto shadow-inner"
-      dangerouslySetInnerHTML={{ __html: svg || '<div class="text-xs text-[#555555] animate-pulse">Rendering diagram...</div>' }}
+      className="bg-[#0f0f0f] border border-border rounded-xl p-6 my-6 flex justify-center overflow-x-auto shadow-inner"
+      dangerouslySetInnerHTML={{ __html: svg || '<div class="text-xs text-text-muted animate-pulse">Rendering diagram...</div>' }}
     />
   );
 }

@@ -26,7 +26,7 @@ export function Modal({ isOpen, onClose, title, description, children }: ModalPr
       onClick={onClose}
     >
       <div 
-        className="bg-[#161616] border border-[#222222] rounded-xl w-full max-w-[520px] p-7 shadow-2xl animate-fade-in-up"
+        className="bg-bg-card border border-border rounded-xl w-full max-w-[520px] p-7 shadow-2xl animate-fade-in-up"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-start mb-6">
@@ -36,7 +36,7 @@ export function Modal({ isOpen, onClose, title, description, children }: ModalPr
           </div>
           <button 
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-[#111111] border border-[#222222] text-gray-400 hover:bg-[#1c1c1c] hover:text-white transition-colors flex items-center justify-center"
+            className="w-8 h-8 rounded-full bg-bg-elevated border border-border text-gray-400 hover:bg-bg-hover hover:text-white transition-colors flex items-center justify-center"
           >
             ×
           </button>

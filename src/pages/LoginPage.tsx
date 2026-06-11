@@ -1,12 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signInWithProvider } from '../lib/auth';
 import { useToast } from '../components/ui/Toast';
+import { useAuth } from '../contexts/AuthContext';
 
 export function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const { showToast } = useToast();
+  const { user } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
 
   const handleOAuth = async (provider: 'github' | 'google') => {
     try {
@@ -21,8 +29,9 @@ export function LoginPage() {
     }
   };
 
+
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-5 relative overflow-hidden text-[#e8e8e8]">
+    <div className="min-h-screen bg-bg flex items-center justify-center p-5 relative overflow-hidden text-text">
       {/* Background Decorative Grid */}
       <div 
         className="absolute inset-0 z-0 pointer-events-none opacity-20"
@@ -36,22 +45,22 @@ export function LoginPage() {
       />
 
       {/* Glow Effect */}
-      <div className="absolute w-[300px] h-[300px] bg-[rgba(34,197,94,0.25)] blur-[120px] rounded-full top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-0 pointer-events-none" />
+      <div className="absolute w-[300px] h-[300px] bg-accent-glow blur-[120px] rounded-full top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-0 pointer-events-none" />
 
       <div className="relative z-10 w-full max-w-[400px] animate-fade-in-up">
         {/* Brand Header */}
         <header className="flex flex-col items-center gap-3 mb-8 text-center">
-          <div className="w-11 h-11 bg-[#22c55e] rounded-xl flex items-center justify-center font-bold text-[#0a0a0a] text-xl shadow-[0_0_20px_rgba(34,197,94,0.25)]">
+          <div className="w-11 h-11 bg-accent rounded-xl flex items-center justify-center font-bold text-bg text-xl shadow-[0_0_20px_rgba(34,197,94,0.25)]">
             P
           </div>
           <div>
             <h1 className="text-[22px] font-semibold tracking-tight mb-0.5">Abstrakx Blueprint</h1>
-            <p className="text-[12px] text-[#555555] uppercase tracking-[1.5px]">Enterprise</p>
+            <p className="text-[12px] text-text-muted uppercase tracking-[1.5px]">Enterprise</p>
           </div>
         </header>
 
         {/* Login Card */}
-        <main className="bg-[#161616] border border-[#222222] rounded-xl p-8">
+        <main className="bg-bg-card border border-border rounded-xl p-8">
           
           <div className="space-y-4">
             <button 
@@ -80,19 +89,19 @@ export function LoginPage() {
             </button>
           </div>
 
-          <div className="flex items-center text-center my-6 text-[11px] text-[#555555] uppercase tracking-[0.5px] before:flex-1 before:border-b before:border-[#222222] before:mr-3 after:flex-1 after:border-b after:border-[#222222] after:ml-3">
+          <div className="flex items-center text-center my-6 text-[11px] text-text-muted uppercase tracking-[0.5px] before:flex-1 before:border-b before:border-border before:mr-3 after:flex-1 after:border-b after:border-border after:ml-3">
             Or Skip for Demo
           </div>
 
           <button 
             onClick={() => navigate('/dashboard')}
-            className="w-full py-2.5 px-4 bg-[#111111] border border-[#222222] text-[#e8e8e8] rounded-md text-[13px] font-semibold hover:bg-[#1c1c1c] hover:border-[#333333] transition-all"
+            className="w-full py-2.5 px-4 bg-bg-elevated border border-border text-text rounded-md text-[13px] font-semibold hover:bg-bg-hover hover:border-border-hover transition-all"
           >
             Enter Demo Mode
           </button>
         </main>
 
-        <footer className="mt-6 text-center text-[11px] text-[#555555]">
+        <footer className="mt-6 text-center text-[11px] text-text-muted">
           🔒 End-to-end encrypted node session • Abstrakx Blueprint v0.1.0
         </footer>
       </div>

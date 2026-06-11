@@ -77,12 +77,12 @@ export function KnowledgeViewer({
   };
 
   return (
-    <div className="flex-1 flex overflow-hidden font-sans bg-[#0a0a0a]">
+    <div className="flex-1 flex overflow-hidden font-sans bg-bg">
       
       {/* LEFT PANEL: FILE TREE */}
-      <aside className="w-60 border-r border-[#222222] bg-[#0b0b0b] flex flex-col justify-between shrink-0">
+      <aside className="w-60 border-r border-border bg-[#0b0b0b] flex flex-col justify-between shrink-0">
         <div className="overflow-y-auto p-4 flex-1">
-          <div className="text-[11px] text-[#555555] font-bold uppercase tracking-wider mb-4 flex items-center gap-1.5">
+          <div className="text-[11px] text-text-muted font-bold uppercase tracking-wider mb-4 flex items-center gap-1.5">
             <Layers size={12} /> Project Files
           </div>
           <div className="space-y-0.5">
@@ -99,13 +99,13 @@ export function KnowledgeViewer({
 
         {/* SYNC TRIGGER (For developers only) */}
         {canSync && (
-          <div className="p-4 border-t border-[#222222] bg-[#0c0c0c]">
+          <div className="p-4 border-t border-border bg-[#0c0c0c]">
             <button
               onClick={onSync}
               disabled={isSyncing}
-              className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-[#161616] border border-[#222222] hover:bg-[#1c1c1c] hover:border-[#333333] disabled:opacity-50 transition-all text-xs font-semibold rounded-md text-[#e8e8e8]"
+              className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-bg-card border border-border hover:bg-bg-hover hover:border-border-hover disabled:opacity-50 transition-all text-xs font-semibold rounded-md text-text"
             >
-              <RefreshCw size={12} className={isSyncing ? 'animate-spin text-accent' : 'text-[#888888]'} />
+              <RefreshCw size={12} className={isSyncing ? 'animate-spin text-accent' : 'text-text-secondary'} />
               {isSyncing ? 'Syncing Docs...' : 'Sync GitHub Docs'}
             </button>
           </div>
@@ -113,12 +113,12 @@ export function KnowledgeViewer({
       </aside>
 
       {/* CENTER PANEL: MARKDOWN READER */}
-      <main className="flex-1 overflow-y-auto p-8 md:p-12 border-r border-[#222222]">
+      <main className="flex-1 overflow-y-auto p-8 md:p-12 border-r border-border">
         {isLoadingContent ? (
           <div className="h-full flex items-center justify-center">
             <div className="flex flex-col items-center gap-4 text-center">
               <div className="w-8 h-8 rounded-full border-2 border-accent/20 border-t-accent animate-spin" />
-              <div className="text-xs text-[#555555] font-mono">Fetching document contents...</div>
+              <div className="text-xs text-text-muted font-mono">Fetching document contents...</div>
             </div>
           </div>
         ) : (
@@ -128,16 +128,16 @@ export function KnowledgeViewer({
               rehypePlugins={[rehypeHighlight, rehypeSlug]}
               components={{
                 h1: ({ node, ...props }) => (
-                  <h1 className="text-3xl font-bold tracking-tight text-[#e8e8e8] mb-6 border-b border-[#222222] pb-4 mt-0 font-sans" {...props} />
+                  <h1 className="text-3xl font-bold tracking-tight text-text mb-6 border-b border-border pb-4 mt-0 font-sans" {...props} />
                 ),
                 h2: ({ node, ...props }) => (
-                  <h2 className="text-xl font-bold tracking-tight text-[#e8e8e8] mb-4 mt-8 font-sans scroll-mt-6" {...props} />
+                  <h2 className="text-xl font-bold tracking-tight text-text mb-4 mt-8 font-sans scroll-mt-6" {...props} />
                 ),
                 h3: ({ node, ...props }) => (
-                  <h3 className="text-base font-semibold text-[#e8e8e8] mb-3 mt-6 font-sans scroll-mt-6" {...props} />
+                  <h3 className="text-base font-semibold text-text mb-3 mt-6 font-sans scroll-mt-6" {...props} />
                 ),
                 p: ({ node, ...props }) => (
-                  <p className="text-[14px] text-[#888888] leading-[1.7] mb-5 font-sans" {...props} />
+                  <p className="text-[14px] text-text-secondary leading-[1.7] mb-5 font-sans" {...props} />
                 ),
                 code: ({ node, className, children, ...props }) => {
                   const match = /language-(\w+)/.exec(className || '');
@@ -151,7 +151,7 @@ export function KnowledgeViewer({
                   return (
                     <code 
                       className={`
-                        font-mono text-xs px-1.5 py-0.5 rounded-sm bg-[#161616] border border-[#222222] text-[#e8e8e8]
+                        font-mono text-xs px-1.5 py-0.5 rounded-sm bg-bg-card border border-border text-text
                         ${match ? 'block p-4 my-5 overflow-x-auto leading-relaxed' : ''}
                       `} 
                       {...props}
@@ -161,27 +161,27 @@ export function KnowledgeViewer({
                   );
                 },
                 table: ({ node, ...props }) => (
-                  <div className="overflow-x-auto my-6 border border-[#222222] rounded-xl">
+                  <div className="overflow-x-auto my-6 border border-border rounded-xl">
                     <table className="w-full text-left border-collapse text-xs font-sans" {...props} />
                   </div>
                 ),
                 thead: ({ node, ...props }) => (
-                  <thead className="bg-[#111111] border-b border-[#222222] font-semibold text-[#e8e8e8]" {...props} />
+                  <thead className="bg-bg-elevated border-b border-border font-semibold text-text" {...props} />
                 ),
                 th: ({ node, ...props }) => (
                   <th className="p-3 font-semibold" {...props} />
                 ),
                 td: ({ node, ...props }) => (
-                  <td className="p-3 border-b border-[#222222] text-[#888888]" {...props} />
+                  <td className="p-3 border-b border-border text-text-secondary" {...props} />
                 ),
                 a: ({ node, ...props }) => (
                   <a className="text-accent hover:underline decoration-accent/30 font-medium" {...props} />
                 ),
                 ul: ({ node, ...props }) => (
-                  <ul className="list-disc pl-5 mb-5 space-y-2 text-[14px] text-[#888888]" {...props} />
+                  <ul className="list-disc pl-5 mb-5 space-y-2 text-[14px] text-text-secondary" {...props} />
                 ),
                 ol: ({ node, ...props }) => (
-                  <ol className="list-decimal pl-5 mb-5 space-y-2 text-[14px] text-[#888888]" {...props} />
+                  <ol className="list-decimal pl-5 mb-5 space-y-2 text-[14px] text-text-secondary" {...props} />
                 ),
               }}
             >
@@ -192,11 +192,11 @@ export function KnowledgeViewer({
       </main>
 
       {/* RIGHT PANEL: TABLE OF CONTENTS */}
-      <aside className="w-56 overflow-y-auto p-6 hidden xl:block shrink-0 bg-[#0a0a0a]">
+      <aside className="w-56 overflow-y-auto p-6 hidden xl:block shrink-0 bg-bg">
         {headings.length > 0 && (
           <div>
-            <h4 className="text-[10px] text-[#555555] font-bold uppercase tracking-wider mb-4">On This Page</h4>
-            <ul className="space-y-3 border-l border-[#222222]">
+            <h4 className="text-[10px] text-text-muted font-bold uppercase tracking-wider mb-4">On This Page</h4>
+            <ul className="space-y-3 border-l border-border">
               {headings.map((heading) => (
                 <li 
                   key={heading.id}
@@ -205,7 +205,7 @@ export function KnowledgeViewer({
                     ${heading.level === 3 ? 'pl-6' : ''}
                     ${activeHeadingId === heading.id 
                       ? 'border-accent text-accent font-medium' 
-                      : 'border-transparent text-[#888888] hover:text-[#e8e8e8]'
+                      : 'border-transparent text-text-secondary hover:text-text'
                     }
                   `}
                 >
@@ -248,11 +248,11 @@ function FileTreeNode({
           w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[13px] font-medium transition-colors text-left
           ${isActive 
             ? 'bg-accent/10 text-accent' 
-            : 'text-[#888888] hover:text-[#e8e8e8] hover:bg-[#161616]'
+            : 'text-text-secondary hover:text-text hover:bg-bg-card'
           }
         `}
       >
-        <FileText size={14} className={isActive ? 'text-accent' : 'text-[#555555]'} />
+        <FileText size={14} className={isActive ? 'text-accent' : 'text-text-muted'} />
         <span className="truncate">{node.name}</span>
       </button>
     );
@@ -263,16 +263,16 @@ function FileTreeNode({
     <div>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-[13px] font-medium text-[#888888] hover:text-[#e8e8e8] hover:bg-[#161616] transition-colors text-left"
+        className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-[13px] font-medium text-text-secondary hover:text-text hover:bg-bg-card transition-colors text-left"
       >
         <div className="flex items-center gap-2.5 truncate">
-          <Folder size={14} className="text-[#555555]" />
+          <Folder size={14} className="text-text-muted" />
           <span className="truncate">{node.name}</span>
         </div>
-        {isOpen ? <ChevronDown size={12} className="text-[#555555]" /> : <ChevronRight size={12} className="text-[#555555]" />}
+        {isOpen ? <ChevronDown size={12} className="text-text-muted" /> : <ChevronRight size={12} className="text-text-muted" />}
       </button>
       {isOpen && node.children && (
-        <div className="pl-3.5 mt-0.5 border-l border-[#222222]/50 ml-4 space-y-0.5">
+        <div className="pl-3.5 mt-0.5 border-l border-border/50 ml-4 space-y-0.5">
           {node.children.map((child) => (
             <FileTreeNode
               key={child.path}
