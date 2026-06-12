@@ -329,9 +329,14 @@ export function DashboardPage() {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-text-secondary text-[13px] hidden sm:inline">
-              Logged in as <strong>{displayName}</strong>
-            </span>
+            <div className="hidden sm:flex flex-col items-end leading-tight">
+              <span className="text-text-secondary text-[13px]">
+                Logged in as <strong>{displayName}</strong>
+              </span>
+              <span className="text-[10px] text-text-muted capitalize font-mono">
+                via {user?.app_metadata?.provider || 'credential'}
+              </span>
+            </div>
             <div className="w-9 h-9 rounded-full bg-linear-to-br from-accent to-[#16a34a] flex items-center justify-center font-semibold text-sm text-bg cursor-pointer hover:scale-110 transition-transform shadow-[0_0_15px_rgba(34,197,94,0.2)]">
               {displayInitial}
             </div>
