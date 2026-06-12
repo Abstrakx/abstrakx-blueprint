@@ -112,8 +112,11 @@ export async function fetchFileContent(
     });
 
     if ("content" in response.data) {
-      // Decode base64 content
-      const decoded = atob(response.data.content.replace(/\n/g, ""));
+      // Decode base64 content safely supporting UTF-8 (emojis etc)
+      const b64 = response.data.content.replace(/\n/g, "");
+      const decoded = new TextDecoder("utf-8").decode(
+        Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))
+      );
       memoryCache[cacheKey] = decoded;
       return decoded;
     }
@@ -135,6 +138,8 @@ export async function syncDocsToSupabase(
   branch: string = "main",
   token?: string,
   docsDir: string = "docs",
+  commitSha?: string,
+  syncedBy?: string,
 ): Promise<void> {
   const cleanDocsDir = docsDir.replace(/^\//, "") || "docs";
   const docsTree = await fetchDocsTree(
@@ -175,6 +180,8 @@ export async function syncDocsToSupabase(
         project_id: projectId,
         file_path: filePath,
         content: content,
+        commit_sha: commitSha || null,
+        synced_by: syncedBy || null,
         synced_at: new Date().toISOString(),
       },
       { onConflict: "project_id,file_path" },

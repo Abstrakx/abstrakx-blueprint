@@ -7,7 +7,7 @@ import { TaskBoard } from '../components/tasks/TaskBoard';
 import { useToast } from '../components/ui/Toast';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { fetchDocsTree, fetchFileContent, syncDocsToSupabase, fetchRecentCommits } from '../lib/github';
+import { fetchDocsTree, fetchFileContent, syncDocsToSupabase, fetchRecentCommits, getOctokit } from '../lib/github';
 import { Project, Task, DocFile, CompiledNote, TeamMember } from '../types';
 import { GitFork, Clock, RefreshCw } from 'lucide-react';
 
@@ -277,7 +277,30 @@ export function WorkspacePage() {
       const [owner, repo] = project.github_repo.split('/');
       const docsPath = project.docs_dir?.replace(/^\//, '') || 'docs';
       
-      await syncDocsToSupabase(project.id, owner, repo, project.branch, githubToken || undefined, docsPath);
+      // Fetch latest commit SHA for tracking/caching
+      let latestCommitSha: string | undefined = undefined;
+      try {
+        const octokit = getOctokit(githubToken || undefined);
+        const branchRes = await octokit.rest.repos.getBranch({
+          owner,
+          repo,
+          branch: project.branch,
+        });
+        latestCommitSha = branchRes.data.commit.sha;
+      } catch (commitErr) {
+        console.error('Failed to fetch latest commit SHA during sync:', commitErr);
+      }
+
+      await syncDocsToSupabase(
+        project.id,
+        owner,
+        repo,
+        project.branch,
+        githubToken || undefined,
+        docsPath,
+        latestCommitSha,
+        user?.id || undefined
+      );
       showToast('Documentation cached to Supabase successfully!', 'success');
       
       // Reload docs tree & content after sync
