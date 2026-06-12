@@ -18,7 +18,7 @@ export function Sidebar({ currentView, onViewChange, projectName, repoName, team
   const navItems = [
     { id: 'overview' as ViewMode, label: 'Overview', icon: LayoutDashboard },
     { id: 'knowledge' as ViewMode, label: 'Knowledge Base', icon: BookOpen },
-    { id: 'notes' as ViewMode, label: '💡 Notes Compiler', icon: Lightbulb },
+    { id: 'notes' as ViewMode, label: 'Notes Compiler', icon: Lightbulb },
     { id: 'tasks' as ViewMode, label: 'Task Board', icon: CheckSquare },
   ];
 
@@ -27,7 +27,7 @@ export function Sidebar({ currentView, onViewChange, projectName, repoName, team
       <div>
         {/* BACK TO DASHBOARD */}
         <div className="p-4 border-b border-border">
-          <button 
+          <button
             onClick={() => navigate('/dashboard')}
             className="flex items-center gap-2 text-xs font-semibold text-text-secondary hover:text-white transition-colors"
           >
@@ -57,8 +57,8 @@ export function Sidebar({ currentView, onViewChange, projectName, repoName, team
                 onClick={() => onViewChange(item.id)}
                 className={`
                   w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-[13px] font-medium transition-all duration-200
-                  ${isActive 
-                    ? 'bg-accent/10 text-accent' 
+                  ${isActive
+                    ? 'bg-accent/10 text-accent'
                     : 'text-text-secondary hover:text-text hover:bg-bg-card'
                   }
                 `}
@@ -81,7 +81,7 @@ export function Sidebar({ currentView, onViewChange, projectName, repoName, team
             ) : (
               teamMembers.map((member) => (
                 <div key={member.id} className="flex items-center gap-3">
-                  <div 
+                  <div
                     className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-bg shrink-0"
                     style={{ backgroundColor: member.avatar_color || '#22c55e' }}
                   >
@@ -89,7 +89,7 @@ export function Sidebar({ currentView, onViewChange, projectName, repoName, team
                   </div>
                   <div className="min-w-0">
                     <div className="text-[13px] font-medium text-text leading-none mb-1 truncate">{member.name}</div>
-                    <div className="text-[10px] text-text-muted leading-none capitalize">{member.role}</div>
+                    <div className="text-[10px] text-text-muted leading-none capitalize">{member.title || member.role}</div>
                   </div>
                 </div>
               ))

@@ -26,6 +26,9 @@ export async function signOut() {
   if (error) throw error;
 }
 
+// Module-level guard to prevent duplicate PKCE code exchanges
+const processedCodes = new Set<string>();
+
 export async function handleDeepLinkCallback(url: string) {
   try {
     const urlObj = new URL(url);
@@ -33,6 +36,12 @@ export async function handleDeepLinkCallback(url: string) {
     // Check if it's code (PKCE) or hash parameters (implicit flow)
     const code = urlObj.searchParams.get("code");
     if (code) {
+      if (processedCodes.has(code)) {
+        console.log("[auth] Skipping duplicate PKCE code exchange:", code.slice(0, 8) + "...");
+        return null;
+      }
+      processedCodes.add(code);
+
       const { data, error } = await supabase.auth.exchangeCodeForSession(code);
       if (error) throw error;
       return data.session;

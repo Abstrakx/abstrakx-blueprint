@@ -7,7 +7,7 @@ import { TaskBoard } from '../components/tasks/TaskBoard';
 import { useToast } from '../components/ui/Toast';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { fetchDocsTree, fetchFileContent, syncDocsToSupabase } from '../lib/github';
+import { fetchDocsTree, fetchFileContent, syncDocsToSupabase, fetchRecentCommits } from '../lib/github';
 import { Project, Task, DocFile, CompiledNote, TeamMember } from '../types';
 import { GitFork, Clock, RefreshCw } from 'lucide-react';
 
@@ -37,6 +37,7 @@ export function WorkspacePage() {
   // Notes & Tasks
   const [notes, setNotes] = useState<CompiledNote[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [recentCommits, setRecentCommits] = useState<any[]>([]);
 
   // Fetch Project and Team Members
   useEffect(() => {
@@ -80,6 +81,22 @@ export function WorkspacePage() {
             setUserRole(provider === 'google' ? 'viewer' : 'developer');
           }
         }
+
+        // 4. Fetch recent GitHub commits
+        const [owner, repo] = (projData.github_repo || '').split('/');
+        if (owner && repo) {
+          try {
+            const commits = await fetchRecentCommits(
+              owner,
+              repo,
+              projData.branch || 'main',
+              githubToken || undefined
+            );
+            setRecentCommits(commits);
+          } catch (gitErr) {
+            console.error('Failed to fetch recent commits:', gitErr);
+          }
+        }
       } catch (err: any) {
         console.error('Error loading workspace:', err);
         showToast('Failed to load workspace data', 'warning');
@@ -97,6 +114,7 @@ export function WorkspacePage() {
 
     const loadDocsTree = async () => {
       const [owner, repo] = project.github_repo.split('/');
+      const docsPath = project.docs_dir?.replace(/^\//, '') || 'docs';
       
       try {
         if (userRole === 'viewer') {
@@ -108,7 +126,7 @@ export function WorkspacePage() {
 
           if (error || !data || data.length === 0) {
             console.log('No cached docs found, falling back to git structures');
-            const tree = await fetchDocsTree(owner, repo, 'docs', project.branch, githubToken || undefined);
+            const tree = await fetchDocsTree(owner, repo, docsPath, project.branch, githubToken || undefined);
             setDocsTree(tree);
             return;
           }
@@ -118,7 +136,7 @@ export function WorkspacePage() {
           setDocsTree(reconstructedTree);
         } else {
           // Developers load live docs tree structure from GitHub
-          const tree = await fetchDocsTree(owner, repo, 'docs', project.branch, githubToken || undefined);
+          const tree = await fetchDocsTree(owner, repo, docsPath, project.branch, githubToken || undefined);
           setDocsTree(tree);
         }
       } catch (err) {
@@ -257,11 +275,13 @@ export function WorkspacePage() {
       setIsSyncingDocs(true);
       showToast('Starting Git Zero-Clone documentation compilation...', 'info');
       const [owner, repo] = project.github_repo.split('/');
-      await syncDocsToSupabase(project.id, owner, repo, project.branch, githubToken || undefined);
+      const docsPath = project.docs_dir?.replace(/^\//, '') || 'docs';
+      
+      await syncDocsToSupabase(project.id, owner, repo, project.branch, githubToken || undefined, docsPath);
       showToast('Documentation cached to Supabase successfully!', 'success');
       
       // Reload docs tree & content after sync
-      const tree = await fetchDocsTree(owner, repo, 'docs', project.branch, githubToken || undefined);
+      const tree = await fetchDocsTree(owner, repo, docsPath, project.branch, githubToken || undefined);
       setDocsTree(tree);
       if (activeFilePath) {
         const liveContent = await fetchFileContent(owner, repo, activeFilePath, project.branch, githubToken || undefined);
@@ -467,9 +487,21 @@ export function WorkspacePage() {
               Git Commit Stream & Activity
             </h3>
             <div className="bg-bg-elevated border border-border rounded-xl p-6 space-y-5">
-              <CommitItem author="Iqbal" msg="docs: update system architecture with sequences" time="2 hours ago" sha="a6f3b58" />
-              <CommitItem author="Syaiful" msg="feat: calibrate joint stiffness values in Unity robot" time="5 hours ago" sha="c39a2f1" />
-              <CommitItem author="Hendra" msg="fix: update lidar collision boundaries in asset URDF" time="1 day ago" sha="f9b4c2e" />
+              {recentCommits.length === 0 ? (
+                <div className="text-xs text-text-muted italic py-2 text-center">
+                  No commits loaded or repository is unauthenticated
+                </div>
+              ) : (
+                recentCommits.map((c: any) => (
+                  <CommitItem
+                    key={c.sha}
+                    author={c.author}
+                    msg={c.msg}
+                    time={c.time}
+                    sha={c.sha}
+                  />
+                ))
+              )}
             </div>
           </div>
         )}
@@ -505,6 +537,7 @@ export function WorkspacePage() {
             onAddTask={handleAddTask}
             onDeleteTask={handleDeleteTask}
             userRole={userRole}
+            teamMembers={teamMembers}
           />
         )}
 

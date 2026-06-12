@@ -19,6 +19,7 @@ export interface TeamMember {
   name: string;
   role: UserRole;
   avatar_color: string;
+  title?: string;
 }
 
 export interface Task {

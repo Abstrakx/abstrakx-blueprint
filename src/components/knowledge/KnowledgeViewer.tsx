@@ -18,6 +18,42 @@ interface KnowledgeViewerProps {
   canSync: boolean;
 }
 
+const SETUP_GUIDE_MD = `# 📂 No Documentation Found
+
+Your repository does not have a documentation directory configured or the folder is empty. 
+
+Follow this quick guide to set up your project workspace:
+
+### 1. Create the Docs Folder
+Create a folder in your repository root. By default, Abstrakx looks for a \`/docs\` directory. If you specified a different folder (e.g. \`/documentation\`) when connecting the project, use that.
+
+### 2. Add Markdown Files
+Create markdown files (with \`.md\` extension) inside your folder. You can organize them into subdirectories as needed:
+
+\`\`\`text
+your-repository/
+├── docs/
+│   ├── architecture.md
+│   ├── installation.md
+│   ├── api-reference.md
+│   └── workflows/
+│       ├── git-flow.md
+│       └── ci-cd.md
+\`\`\`
+
+### 3. Sync Your Documentation
+Click the **"Sync GitHub Docs"** button at the bottom of the left sidebar. This will compile, index, and cache your documentation so team members can view it.
+
+---
+
+### 4. Scanned Notes & Action Items
+You can create automatic team reminders directly in your markdown docs. The notes compiler will scan for lines beginning with \`💡 NOTE:\` and aggregate them:
+
+\`\`\`markdown
+💡 NOTE: Iqbal - Ensure main database schema is migrated before running the new migration script.
+\`\`\`
+`;
+
 export function KnowledgeViewer({
   files,
   activeFilePath,
@@ -33,7 +69,8 @@ export function KnowledgeViewer({
 
   // Extract headings from markdown text for the Table of Contents (ToC)
   useEffect(() => {
-    const headingLines = content.split('\n').filter((line) => line.startsWith('## ') || line.startsWith('### '));
+    const activeContent = files.length === 0 ? SETUP_GUIDE_MD : content;
+    const headingLines = activeContent.split('\n').filter((line) => line.startsWith('## ') || line.startsWith('### '));
     const parsedHeadings = headingLines.map((line) => {
       const level = line.startsWith('## ') ? 2 : 3;
       const text = line.replace(/^#{2,3}\s+/, '').trim();
@@ -45,7 +82,7 @@ export function KnowledgeViewer({
       return { id, text, level };
     });
     setHeadings(parsedHeadings);
-  }, [content]);
+  }, [content, files]);
 
   // Set up IntersectionObserver to track reading position and highlight active heading in ToC
   useEffect(() => {
@@ -67,7 +104,7 @@ export function KnowledgeViewer({
     }
 
     return () => observer.disconnect();
-  }, [content, isLoadingContent]);
+  }, [content, files, isLoadingContent]);
 
   const handleHeadingClick = (id: string) => {
     const element = document.getElementById(id);
@@ -78,7 +115,7 @@ export function KnowledgeViewer({
 
   return (
     <div className="flex-1 flex overflow-hidden font-sans bg-bg">
-      
+
       {/* LEFT PANEL: FILE TREE */}
       <aside className="w-60 border-r border-border bg-[#0b0b0b] flex flex-col justify-between shrink-0">
         <div className="overflow-y-auto p-4 flex-1">
@@ -86,14 +123,20 @@ export function KnowledgeViewer({
             <Layers size={12} /> Project Files
           </div>
           <div className="space-y-0.5">
-            {files.map((node) => (
-              <FileTreeNode
-                key={node.path}
-                node={node}
-                activePath={activeFilePath}
-                onSelect={onActiveFileChange}
-              />
-            ))}
+            {files.length === 0 ? (
+              <div className="text-xs text-text-muted italic px-2.5 py-4">
+                No documentation folders detected.
+              </div>
+            ) : (
+              files.map((node) => (
+                <FileTreeNode
+                  key={node.path}
+                  node={node}
+                  activePath={activeFilePath}
+                  onSelect={onActiveFileChange}
+                />
+              ))
+            )}
           </div>
         </div>
 
@@ -149,11 +192,11 @@ export function KnowledgeViewer({
 
                   // Non-mermaid code blocks
                   return (
-                    <code 
+                    <code
                       className={`
                         font-mono text-xs px-1.5 py-0.5 rounded-sm bg-bg-card border border-border text-text
                         ${match ? 'block p-4 my-5 overflow-x-auto leading-relaxed' : ''}
-                      `} 
+                      `}
                       {...props}
                     >
                       {children}
@@ -185,7 +228,7 @@ export function KnowledgeViewer({
                 ),
               }}
             >
-              {content}
+              {files.length === 0 ? SETUP_GUIDE_MD : content}
             </ReactMarkdown>
           </div>
         )}
@@ -198,13 +241,13 @@ export function KnowledgeViewer({
             <h4 className="text-[10px] text-text-muted font-bold uppercase tracking-wider mb-4">On This Page</h4>
             <ul className="space-y-3 border-l border-border">
               {headings.map((heading) => (
-                <li 
+                <li
                   key={heading.id}
                   className={`
                     pl-3 border-l -ml-px
                     ${heading.level === 3 ? 'pl-6' : ''}
-                    ${activeHeadingId === heading.id 
-                      ? 'border-accent text-accent font-medium' 
+                    ${activeHeadingId === heading.id
+                      ? 'border-accent text-accent font-medium'
                       : 'border-transparent text-text-secondary hover:text-text'
                     }
                   `}
@@ -246,8 +289,8 @@ function FileTreeNode({
         onClick={() => onSelect(node.path)}
         className={`
           w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[13px] font-medium transition-colors text-left
-          ${isActive 
-            ? 'bg-accent/10 text-accent' 
+          ${isActive
+            ? 'bg-accent/10 text-accent'
             : 'text-text-secondary hover:text-text hover:bg-bg-card'
           }
         `}

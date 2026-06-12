@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { ToastProvider } from './components/ui/Toast';
 import { LoginPage } from './pages/LoginPage';
@@ -9,6 +9,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 function DeepLinkListener() {
   const navigate = useNavigate();
   const { refreshSession } = useAuth();
+  const isProcessing = useRef(false);
 
   useEffect(() => {
     // Only set up deep-link on desktop/Tauri
@@ -22,26 +23,35 @@ function DeepLinkListener() {
         const { onOpenUrl } = await import('@tauri-apps/plugin-deep-link');
         unsubscribe = await onOpenUrl(async (urls: string[]) => {
           console.log('Received deep link urls:', urls);
-          for (const url of urls) {
-            // Check if redirect contains the callback route
-            if (url.includes('callback')) {
-              try {
+          if (isProcessing.current) {
+            console.log('[App] DeepLinkListener: Already processing a deep link, skipping.');
+            return;
+          }
+          isProcessing.current = true;
+
+          try {
+            for (const url of urls) {
+              // Check if redirect contains the callback route
+              if (url.includes('callback')) {
                 const { handleDeepLinkCallback } = await import('./lib/auth');
                 const session = await handleDeepLinkCallback(url);
                 if (session) {
                   await refreshSession();
                   navigate('/dashboard');
                 }
-              } catch (err) {
-                console.error('Error handling deep link in listener:', err);
               }
             }
+          } catch (err) {
+            console.error('Error handling deep link in listener:', err);
+          } finally {
+            isProcessing.current = false;
           }
         });
       } catch (err) {
         console.error('Failed to register deep link handler:', err);
       }
     };
+
 
     setupDeepLink();
 

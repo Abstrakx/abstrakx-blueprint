@@ -34,8 +34,11 @@ export function DashboardPage() {
 
   // Add team member states
   const [targetProjectId, setTargetProjectId] = useState("");
-  const [memberName, setMemberName] = useState("");
   const [memberRole, setMemberRole] = useState("developer");
+  const [customTitle, setCustomTitle] = useState("");
+  const [profiles, setProfiles] = useState<any[]>([]);
+  const [selectedProfileId, setSelectedProfileId] = useState("");
+  const [isLoadingProfiles, setIsLoadingProfiles] = useState(false);
 
   const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User";
   const displayInitial = displayName[0].toUpperCase();
@@ -77,15 +80,42 @@ export function DashboardPage() {
     loadDocsCount();
   }, []);
 
+  // Fetch registered user profiles when "Add Team Member" modal opens
+  useEffect(() => {
+    if (!isAddMemberOpen) return;
+
+    const getProfiles = async () => {
+      setIsLoadingProfiles(true);
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("id, email, display_name");
+
+        if (error) throw error;
+        setProfiles(data || []);
+        if (data && data.length > 0) {
+          setSelectedProfileId(data[0].id);
+        }
+      } catch (err: any) {
+        console.error("Error fetching profiles:", err);
+        showToast("Failed to load user profiles.", "warning");
+      } finally {
+        setIsLoadingProfiles(false);
+      }
+    };
+
+    getProfiles();
+  }, [isAddMemberOpen]);
+
   // Fetch repositories when "Add Project" modal opens
   useEffect(() => {
     if (!isAddProjectOpen) return;
-    
+
     // Clear previous options
     setSelectedRepo("");
     setSelectedBranch("");
     setBranchOptions([]);
-    
+
     if (!githubToken) {
       showToast("GitHub OAuth token missing. Authenticate with GitHub to fetch private repos.", "warning");
       return;
@@ -171,11 +201,13 @@ export function DashboardPage() {
       return;
     }
 
+    showToast(user?.id || "Kosong bre");
+
     try {
       showToast("Creating project metadata...", "info");
-      
+
       const repoName = selectedRepo.split("/")[1] || selectedRepo;
-      
+
       // 1. Insert project
       const { data: newProj, error: projErr } = await supabase
         .from("projects")
@@ -211,7 +243,7 @@ export function DashboardPage() {
 
       // 3. Trigger initial git sync in the background
       const [owner, repo] = selectedRepo.split("/");
-      syncDocsToSupabase(newProj.id, owner, repo, selectedBranch, githubToken || undefined)
+      syncDocsToSupabase(newProj.id, owner, repo, selectedBranch, githubToken || undefined, docsFolder)
         .then(() => {
           showToast(`Initial sync complete for ${repoName}!`, "success");
           loadDocsCount();
@@ -232,12 +264,19 @@ export function DashboardPage() {
       showToast("Please select a project.", "warning");
       return;
     }
-    if (!memberName.trim()) {
-      showToast("Please enter a name or email.", "warning");
+    if (!selectedProfileId) {
+      showToast("Please select a registered user.", "warning");
       return;
     }
 
     try {
+      const selectedProfile = profiles.find((p) => p.id === selectedProfileId);
+      if (!selectedProfile) {
+        showToast("Selected user profile not found.", "warning");
+        return;
+      }
+      const selectedName = selectedProfile.display_name || selectedProfile.email?.split("@")[0] || "User";
+
       // Pick a random avatar color for UI
       const colors = ["#22c55e", "#3b82f6", "#f59e0b", "#ec4899", "#8b5cf6", "#10b981"];
       const randomColor = colors[Math.floor(Math.random() * colors.length)];
@@ -246,8 +285,10 @@ export function DashboardPage() {
         .from("team_members")
         .insert({
           project_id: targetProjectId,
-          name: memberName.trim(),
+          user_id: selectedProfileId,
+          name: selectedName,
           role: memberRole,
+          title: customTitle.trim() || null,
           avatar_color: randomColor,
         });
 
@@ -255,7 +296,8 @@ export function DashboardPage() {
 
       showToast("Team member successfully added!", "success");
       setIsAddMemberOpen(false);
-      setMemberName("");
+      setCustomTitle("");
+      setSelectedProfileId("");
       loadProjects();
     } catch (err: any) {
       console.error("Error adding team member:", err);
@@ -467,7 +509,7 @@ export function DashboardPage() {
             onChange={setSelectedRepo}
             isLoading={isLoadingRepos}
           />
-          
+
           <SearchableDropdown
             label="Tracking Branch"
             placeholder="Select a branch..."
@@ -489,7 +531,7 @@ export function DashboardPage() {
               onChange={(e) => setDocsFolder(e.target.value)}
             />
           </div>
-          
+
           <div className="flex justify-end gap-3 mt-8 pt-5 border-t border-border">
             <button
               onClick={() => setIsAddProjectOpen(false)}
@@ -518,7 +560,7 @@ export function DashboardPage() {
             <label className="block text-[11px] font-bold text-text-muted uppercase tracking-[0.5px] mb-1.5">
               Select Target Project
             </label>
-            <select 
+            <select
               value={targetProjectId}
               onChange={(e) => setTargetProjectId(e.target.value)}
               className="w-full bg-bg border border-border rounded-md px-3.5 py-2 text-xs focus:border-accent outline-none transition-all cursor-pointer appearance-none"
@@ -531,28 +573,42 @@ export function DashboardPage() {
             </select>
           </div>
           <div>
-            <label className="block text-[11px] font-bold text-text-muted uppercase tracking-[0.5px] mb-1.5">
-              Collaborator Name / Nickname
-            </label>
-            <input
-              type="text"
-              value={memberName}
-              onChange={(e) => setMemberName(e.target.value)}
-              className="w-full bg-bg border border-border rounded-md px-3.5 py-2 text-xs focus:border-accent outline-none transition-all placeholder:text-text-muted"
-              placeholder="e.g. Syaiful"
+            <SearchableDropdown
+              label="Select User Profile"
+              options={profiles.map((p) => ({
+                value: p.id,
+                label: p.display_name || p.email || "Unknown User",
+                details: p.email,
+              }))}
+              value={selectedProfileId}
+              onChange={(val) => setSelectedProfileId(val)}
+              placeholder="Search user by name or email..."
+              isLoading={isLoadingProfiles}
             />
           </div>
           <div>
             <label className="block text-[11px] font-bold text-text-muted uppercase tracking-[0.5px] mb-1.5">
-              System Role
+              Custom Title / Designation
             </label>
-            <select 
+            <input
+              type="text"
+              value={customTitle}
+              onChange={(e) => setCustomTitle(e.target.value)}
+              className="w-full bg-bg border border-border rounded-md px-3.5 py-2 text-xs focus:border-accent outline-none transition-all placeholder:text-text-muted"
+              placeholder="e.g. Unity Dev, Lead Designer"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] font-bold text-text-muted uppercase tracking-[0.5px] mb-1.5">
+              System Role / Permissions
+            </label>
+            <select
               value={memberRole}
               onChange={(e) => setMemberRole(e.target.value)}
               className="w-full bg-bg border border-border rounded-md px-3.5 py-2 text-xs focus:border-accent outline-none transition-all cursor-pointer appearance-none"
             >
-              <option value="developer">Developer (GitHub Auth)</option>
-              <option value="viewer">Viewer / Client (Google Auth)</option>
+              <option value="developer">Developer (Can Edit Tasks)</option>
+              <option value="viewer">Viewer / Client (Read-Only)</option>
             </select>
           </div>
           <div className="flex justify-end gap-3 mt-8 pt-5 border-t border-border">
