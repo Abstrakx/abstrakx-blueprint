@@ -38,8 +38,8 @@ export function Sidebar({ currentView, onViewChange, projectName, repoName, team
         {/* BRAND / PROJECT HEADER */}
         <div className="p-6">
           <div className="flex items-center gap-2.5 mb-1">
-            <div className="w-5 h-5 bg-accent rounded-md flex items-center justify-center font-bold text-bg text-[10px]">
-              P
+            <div className="w-5 h-5 flex items-center justify-center overflow-hidden">
+              <img src="/Logo.png" alt="Abstrakx Logo" className="w-full h-full object-contain rounded-sm" />
             </div>
             <span className="text-xs font-bold uppercase tracking-[1.5px] text-text-muted">Workspace</span>
           </div>

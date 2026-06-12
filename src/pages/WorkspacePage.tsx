@@ -23,7 +23,7 @@ export function WorkspacePage() {
   const [project, setProject] = useState<Project | null>(null);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [isLoadingProject, setIsLoadingProject] = useState<boolean>(true);
-  
+
   // Auth details
   const [userRole, setUserRole] = useState<'owner' | 'developer' | 'viewer'>('viewer');
 
@@ -46,7 +46,7 @@ export function WorkspacePage() {
     const loadWorkspaceData = async () => {
       try {
         setIsLoadingProject(true);
-        
+
         // 1. Fetch project from Supabase
         const { data: projData, error: projErr } = await supabase
           .from('projects')
@@ -66,7 +66,7 @@ export function WorkspacePage() {
         const { data: profData } = await supabase
           .from("profiles")
           .select("id, avatar_url");
-        
+
         const avatarMap: Record<string, string> = {};
         if (profData) {
           profData.forEach((p) => {
@@ -87,7 +87,7 @@ export function WorkspacePage() {
             avatar_url: m.user_id ? avatarMap[m.user_id] : undefined
           }));
           setTeamMembers(mappedMembers as TeamMember[]);
-          
+
           // 3. Resolve role for the current user
           const memberRecord = membersData.find(m => m.user_id === user?.id);
           if (memberRecord) {
@@ -132,7 +132,7 @@ export function WorkspacePage() {
     const loadDocsTree = async () => {
       const [owner, repo] = project.github_repo.split('/');
       const docsPath = project.docs_dir?.replace(/^\//, '') || 'docs';
-      
+
       try {
         if (userRole === 'viewer') {
           // Viewers load doc structure cached in Supabase (Option B)
@@ -293,7 +293,7 @@ export function WorkspacePage() {
       showToast('Starting Git Zero-Clone documentation compilation...', 'info');
       const [owner, repo] = project.github_repo.split('/');
       const docsPath = project.docs_dir?.replace(/^\//, '') || 'docs';
-      
+
       // Fetch latest commit SHA for tracking/caching
       let latestCommitSha: string | undefined = undefined;
       try {
@@ -319,7 +319,7 @@ export function WorkspacePage() {
         user?.id || undefined
       );
       showToast('Documentation cached to Supabase successfully!', 'success');
-      
+
       // Reload docs tree & content after sync
       const tree = await fetchDocsTree(owner, repo, docsPath, project.branch, githubToken || undefined);
       setDocsTree(tree);
@@ -417,8 +417,19 @@ export function WorkspacePage() {
 
   if (isLoadingProject) {
     return (
-      <div className="min-h-screen bg-bg flex items-center justify-center">
+      <div className="min-h-screen bg-bg flex flex-col items-center justify-center gap-4">
+        {/* Spinner */}
         <div className="w-8 h-8 rounded-full border-2 border-accent/20 border-t-accent animate-spin" />
+
+        {/* Loading Info */}
+        <div className="flex flex-col items-center gap-1 animate-pulse">
+          <p className="text-sm font-semibold tracking-tight text-text">
+            Initializing Workspace...
+          </p>
+          <p className="text-[10px] text-text-muted font-mono uppercase tracking-[1.2px]">
+            Resolving Supabase Schema & Git Engine
+          </p>
+        </div>
       </div>
     );
   }
@@ -440,7 +451,7 @@ export function WorkspacePage() {
   return (
     <div className="flex h-screen bg-bg text-text overflow-hidden select-none">
       {/* SIDEBAR NAVIGATION */}
-      <Sidebar 
+      <Sidebar
         currentView={activeView}
         onViewChange={setActiveView}
         projectName={project.name}
@@ -450,7 +461,7 @@ export function WorkspacePage() {
 
       {/* CORE WORKSPACE CONTENT AREA */}
       <div className="flex-1 flex flex-col min-w-0">
-        
+
         {/* OVERVIEW TAB VIEW */}
         {activeView === 'overview' && (
           <div className="flex-1 overflow-y-auto p-8 md:p-12 max-w-[900px] mx-auto w-full font-sans animate-fade-in-up">
@@ -465,9 +476,9 @@ export function WorkspacePage() {
                   <span>Branch: <strong>{project.branch}</strong></span>
                 </div>
               </div>
-              
+
               {userRole !== 'viewer' && (
-                <button 
+                <button
                   onClick={handleSyncDocs}
                   disabled={isSyncingDocs}
                   className="px-4 py-2 bg-accent text-bg rounded-md text-[13px] font-semibold hover:opacity-90 flex items-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.15)] disabled:opacity-50"
@@ -548,7 +559,7 @@ export function WorkspacePage() {
 
         {/* KNOWLEDGE VIEW TAB */}
         {activeView === 'knowledge' && (
-          <KnowledgeViewer 
+          <KnowledgeViewer
             files={docsTree}
             activeFilePath={activeFilePath}
             onActiveFileChange={setActiveFilePath}
@@ -562,7 +573,7 @@ export function WorkspacePage() {
 
         {/* NOTES COMPILER TAB VIEW */}
         {activeView === 'notes' && (
-          <NotesCompiler 
+          <NotesCompiler
             notes={notes}
             onNoteClick={handleNoteNavigate}
             isLoading={false}
@@ -571,7 +582,7 @@ export function WorkspacePage() {
 
         {/* TASK BOARD TAB VIEW */}
         {activeView === 'tasks' && (
-          <TaskBoard 
+          <TaskBoard
             tasks={tasks}
             onToggleTask={handleToggleTask}
             onAddTask={handleAddTask}

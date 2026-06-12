@@ -48,12 +48,12 @@ export function DashboardPage() {
   const loadProjects = async () => {
     try {
       setIsLoadingProjects(true);
-      
+
       // Fetch public profiles first to resolve team member avatar images
       const { data: profData } = await supabase
         .from("profiles")
         .select("id, avatar_url");
-      
+
       const avatarMap: Record<string, string> = {};
       if (profData) {
         profData.forEach((p) => {
@@ -333,8 +333,8 @@ export function DashboardPage() {
         {/* TOP BAR */}
         <header className="flex justify-between items-center mb-12 pb-6 border-b border-border animate-fade-in-down">
           <div className="flex items-center gap-3.5 group">
-            <div className="w-10 h-10 bg-accent rounded-xl flex items-center justify-center font-bold text-bg text-lg shadow-[0_0_20px_rgba(34,197,94,0.25)] transition-all group-hover:-rotate-6 group-hover:scale-105 group-hover:shadow-[0_0_30px_rgba(34,197,94,0.25)]">
-              P
+            <div className="w-10 h-10 flex items-center justify-center overflow-hidden">
+              <img src="/Logo.png" alt="Abstrakx Logo" className="w-full h-full object-contain p-1.5 rounded-lg" />
             </div>
             <div>
               <h2 className="text-lg font-semibold tracking-tight leading-tight">
@@ -356,10 +356,10 @@ export function DashboardPage() {
             </div>
             <div className="w-9 h-9 rounded-full bg-linear-to-br from-accent to-[#16a34a] flex items-center justify-center font-semibold text-sm text-bg cursor-pointer hover:scale-110 transition-transform shadow-[0_0_15px_rgba(34,197,94,0.2)] overflow-hidden">
               {user?.user_metadata?.avatar_url || user?.user_metadata?.picture ? (
-                <img 
-                  src={user.user_metadata.avatar_url || user.user_metadata.picture} 
-                  alt={displayName} 
-                  className="w-full h-full object-cover" 
+                <img
+                  src={user.user_metadata.avatar_url || user.user_metadata.picture}
+                  alt={displayName}
+                  className="w-full h-full object-cover"
                 />
               ) : (
                 displayInitial
