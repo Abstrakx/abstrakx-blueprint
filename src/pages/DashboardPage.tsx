@@ -39,6 +39,7 @@ export function DashboardPage() {
   const [profiles, setProfiles] = useState<any[]>([]);
   const [selectedProfileId, setSelectedProfileId] = useState("");
   const [isLoadingProfiles, setIsLoadingProfiles] = useState(false);
+  const [profileAvatars, setProfileAvatars] = useState<Record<string, string>>({});
 
   const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User";
   const displayInitial = displayName[0].toUpperCase();
@@ -47,6 +48,22 @@ export function DashboardPage() {
   const loadProjects = async () => {
     try {
       setIsLoadingProjects(true);
+      
+      // Fetch public profiles first to resolve team member avatar images
+      const { data: profData } = await supabase
+        .from("profiles")
+        .select("id, avatar_url");
+      
+      const avatarMap: Record<string, string> = {};
+      if (profData) {
+        profData.forEach((p) => {
+          if (p.avatar_url) {
+            avatarMap[p.id] = p.avatar_url;
+          }
+        });
+      }
+      setProfileAvatars(avatarMap);
+
       const { data, error } = await supabase
         .from("projects")
         .select("*, team_members(*)")
@@ -324,7 +341,7 @@ export function DashboardPage() {
                 Abstrakx Blueprint
               </h2>
               <p className="text-[11px] text-text-muted uppercase tracking-[1.2px]">
-                Enterprise
+                by Abstrakx Enterprise
               </p>
             </div>
           </div>
@@ -337,8 +354,16 @@ export function DashboardPage() {
                 via {user?.app_metadata?.provider || 'credential'}
               </span>
             </div>
-            <div className="w-9 h-9 rounded-full bg-linear-to-br from-accent to-[#16a34a] flex items-center justify-center font-semibold text-sm text-bg cursor-pointer hover:scale-110 transition-transform shadow-[0_0_15px_rgba(34,197,94,0.2)]">
-              {displayInitial}
+            <div className="w-9 h-9 rounded-full bg-linear-to-br from-accent to-[#16a34a] flex items-center justify-center font-semibold text-sm text-bg cursor-pointer hover:scale-110 transition-transform shadow-[0_0_15px_rgba(34,197,94,0.2)] overflow-hidden">
+              {user?.user_metadata?.avatar_url || user?.user_metadata?.picture ? (
+                <img 
+                  src={user.user_metadata.avatar_url || user.user_metadata.picture} 
+                  alt={displayName} 
+                  className="w-full h-full object-cover" 
+                />
+              ) : (
+                displayInitial
+              )}
             </div>
             <button
               onClick={handleLogout}
@@ -415,6 +440,7 @@ export function DashboardPage() {
                     members={proj.team_members?.map((tm: any) => ({
                       initial: tm.name[0].toUpperCase(),
                       color: tm.avatar_color || "#3b82f6",
+                      avatarUrl: tm.user_id ? profileAvatars[tm.user_id] : undefined,
                     })) || []}
                     status={proj.status === "active" ? "Active" : "Idle"}
                     onClick={() => navigate(`/workspace/${proj.id}`)}
@@ -669,7 +695,7 @@ function ProjectCard({
   title: string;
   repo: string;
   description: string;
-  members: { initial: string; color: string }[];
+  members: { initial: string; color: string; avatarUrl?: string }[];
   status: string;
   onClick: () => void;
 }) {
@@ -695,10 +721,14 @@ function ProjectCard({
           {members.map((m, i) => (
             <div
               key={i}
-              className="w-7 h-7 rounded-full border-[2.5px] border-bg-card flex items-center justify-center text-[10px] font-bold text-white -ml-2 first:ml-0 relative hover:z-10 hover:scale-110 transition-transform"
-              style={{ backgroundColor: m.color }}
+              className="w-7 h-7 rounded-full border-[2.5px] border-bg-card flex items-center justify-center text-[10px] font-bold text-white -ml-2 first:ml-0 relative hover:z-10 hover:scale-110 transition-transform overflow-hidden"
+              style={{ backgroundColor: m.avatarUrl ? undefined : m.color }}
             >
-              {m.initial}
+              {m.avatarUrl ? (
+                <img src={m.avatarUrl} alt={m.initial} className="w-full h-full object-cover" />
+              ) : (
+                m.initial
+              )}
             </div>
           ))}
         </div>

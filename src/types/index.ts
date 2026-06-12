@@ -20,6 +20,7 @@ export interface TeamMember {
   role: UserRole;
   avatar_color: string;
   title?: string;
+  avatar_url?: string;
 }
 
 export interface Task {

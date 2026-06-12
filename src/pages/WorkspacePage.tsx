@@ -62,14 +62,31 @@ export function WorkspacePage() {
 
         setProject(projData as Project);
 
-        // 2. Fetch team members
+        // 2. Fetch team members and public profile avatars
+        const { data: profData } = await supabase
+          .from("profiles")
+          .select("id, avatar_url");
+        
+        const avatarMap: Record<string, string> = {};
+        if (profData) {
+          profData.forEach((p) => {
+            if (p.avatar_url) {
+              avatarMap[p.id] = p.avatar_url;
+            }
+          });
+        }
+
         const { data: membersData, error: membersErr } = await supabase
           .from('team_members')
           .select('*')
           .eq('project_id', projectId);
 
         if (!membersErr && membersData) {
-          setTeamMembers(membersData as TeamMember[]);
+          const mappedMembers = membersData.map((m: any) => ({
+            ...m,
+            avatar_url: m.user_id ? avatarMap[m.user_id] : undefined
+          }));
+          setTeamMembers(mappedMembers as TeamMember[]);
           
           // 3. Resolve role for the current user
           const memberRecord = membersData.find(m => m.user_id === user?.id);

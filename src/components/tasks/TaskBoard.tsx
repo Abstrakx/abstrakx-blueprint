@@ -28,6 +28,7 @@ export function TaskBoard({
     name: member.name,
     avatarColor: member.avatar_color || '#3b82f6',
     title: member.title || member.role,
+    avatarUrl: member.avatar_url,
   }));
 
   const isReadOnly = userRole === 'viewer';
@@ -83,10 +84,14 @@ export function TaskBoard({
                   <div className="p-4 bg-bg-card border-b border-border flex justify-between items-center">
                     <div className="flex items-center gap-2.5">
                       <div 
-                        className="w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs text-bg shrink-0"
-                        style={{ backgroundColor: col.avatarColor }}
+                        className="w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs text-bg shrink-0 overflow-hidden"
+                        style={{ backgroundColor: col.avatarUrl ? undefined : col.avatarColor }}
                       >
-                        {col.name[0]?.toUpperCase() || '?'}
+                        {col.avatarUrl ? (
+                          <img src={col.avatarUrl} alt={col.name} className="w-full h-full object-cover" />
+                        ) : (
+                          col.name[0]?.toUpperCase() || '?'
+                        )}
                       </div>
                       <div>
                         <h3 className="text-[13px] font-bold text-text leading-none mb-0.5">{col.name}</h3>
