@@ -18,7 +18,8 @@ interface KnowledgeViewerProps {
   canSync: boolean;
 }
 
-const SETUP_GUIDE_MD = `# 📂 No Documentation Found
+const SETUP_GUIDE_MD = `
+# 📂 No Documentation Found
 
 Your repository does not have a documentation directory configured or the folder is empty. 
 
