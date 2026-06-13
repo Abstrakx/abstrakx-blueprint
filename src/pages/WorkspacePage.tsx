@@ -144,17 +144,17 @@ export function WorkspacePage() {
           if (error || !data || data.length === 0) {
             console.log('No cached docs found, falling back to git structures');
             const tree = await fetchDocsTree(owner, repo, docsPath, project.branch, githubToken || undefined);
-            setDocsTree(tree);
+            setDocsTree(sortDocsTree(tree));
             return;
           }
 
           // Reconstruct nested structure from flat array of cached paths
           const reconstructedTree = reconstructTreeFromPaths(data.map(d => d.file_path));
-          setDocsTree(reconstructedTree);
+          setDocsTree(sortDocsTree(reconstructedTree));
         } else {
           // Developers load live docs tree structure from GitHub
           const tree = await fetchDocsTree(owner, repo, docsPath, project.branch, githubToken || undefined);
-          setDocsTree(tree);
+          setDocsTree(sortDocsTree(tree));
         }
       } catch (err) {
         console.error('Error loading docs tree:', err);
@@ -598,6 +598,25 @@ export function WorkspacePage() {
 }
 
 // Helpers for reconstructed tree reconstruction (from flat array of paths)
+function sortDocsTree(tree: DocFile[]): DocFile[] {
+  return tree
+    .map(node => {
+      if (node.children && node.children.length > 0) {
+        return {
+          ...node,
+          children: sortDocsTree(node.children)
+        };
+      }
+      return node;
+    })
+    .sort((a, b) => {
+      if (a.type !== b.type) {
+        return a.type === 'file' ? -1 : 1; // File first, directory second
+      }
+      return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+    });
+}
+
 function reconstructTreeFromPaths(paths: string[]): DocFile[] {
   const root: DocFile[] = [];
 

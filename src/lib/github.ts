@@ -215,6 +215,41 @@ export async function syncDocsToSupabase(
       if (notesError) console.error("Error inserting notes:", notesError);
     }
   }
+
+  // PRUNING: Clean up deleted files/notes that are no longer present on GitHub
+  try {
+    const { data: cachedDocs } = await supabase
+      .from("cached_docs")
+      .select("file_path")
+      .eq("project_id", projectId);
+
+    if (cachedDocs) {
+      const cachedPaths = cachedDocs.map((d: any) => d.file_path);
+      const pathsToDelete = cachedPaths.filter((p) => !filePaths.includes(p));
+
+      if (pathsToDelete.length > 0) {
+        // Delete documents from cache
+        const { error: pruneDocsErr } = await supabase
+          .from("cached_docs")
+          .delete()
+          .eq("project_id", projectId)
+          .in("file_path", pathsToDelete);
+
+        if (pruneDocsErr) console.error("Error pruning cached docs:", pruneDocsErr);
+
+        // Delete notes from cache
+        const { error: pruneNotesErr } = await supabase
+          .from("compiled_notes")
+          .delete()
+          .eq("project_id", projectId)
+          .in("file_path", pathsToDelete);
+
+        if (pruneNotesErr) console.error("Error pruning compiled notes:", pruneNotesErr);
+      }
+    }
+  } catch (pruneErr) {
+    console.error("Failed to prune stale cached docs:", pruneErr);
+  }
 }
 
 /**
