@@ -10,7 +10,7 @@ import { SearchableDropdown } from "../components/ui/SearchableDropdown";
 import { syncDocsToSupabase } from "../lib/github";
 
 export function DashboardPage() {
-  const { user, signOut, githubToken } = useAuth();
+  const { user, signOut, githubToken, activeProvider } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
 
@@ -44,6 +44,14 @@ export function DashboardPage() {
 
   const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User";
   const displayInitial = displayName[0].toUpperCase();
+  const isGithubUser = (
+    user?.app_metadata?.provider === 'github' ||
+    user?.app_metadata?.providers?.includes('github') ||
+    user?.identities?.some((id: any) => id.provider === 'github')
+  ) && !!githubToken;
+  const ownedProjects = projects.filter((proj) =>
+    proj.team_members?.some((tm: any) => tm.user_id === user?.id && tm.role === "owner")
+  );
 
   // Load projects from database
   const loadProjects = async () => {
@@ -194,10 +202,10 @@ export function DashboardPage() {
 
   // Pre-fill target project ID when "Add Member" modal opens
   useEffect(() => {
-    if (isAddMemberOpen && projects.length > 0 && !targetProjectId) {
-      setTargetProjectId(projects[0].id);
+    if (isAddMemberOpen && ownedProjects.length > 0 && !targetProjectId) {
+      setTargetProjectId(ownedProjects[0].id);
     }
-  }, [isAddMemberOpen, projects, targetProjectId]);
+  }, [isAddMemberOpen, ownedProjects, targetProjectId]);
 
   const handleLogout = async () => {
     try {
@@ -353,11 +361,13 @@ export function DashboardPage() {
                 Logged in as <strong>{displayName}</strong>
               </span>
               <span className="text-[10px] text-text-muted capitalize font-mono">
-                via {user?.app_metadata?.provider || 'credential'}
+                via {activeProvider || user?.app_metadata?.provider || 'credential'}
               </span>
             </div>
             <div className="w-9 h-9 rounded-full bg-linear-to-br from-accent to-[#16a34a] flex items-center justify-center font-semibold text-sm text-bg cursor-pointer hover:scale-110 transition-transform shadow-[0_0_15px_rgba(34,197,94,0.2)] overflow-hidden">
-              {user?.user_metadata?.avatar_url || user?.user_metadata?.picture ? (
+              {isGithubUser && (user?.user_metadata?.avatar_url || user?.user_metadata?.picture) &&
+              ((user.user_metadata.avatar_url || user.user_metadata.picture).includes('githubusercontent.com') ||
+               (user.user_metadata.avatar_url || user.user_metadata.picture).includes('github.com')) ? (
                 <img
                   src={user.user_metadata.avatar_url || user.user_metadata.picture}
                   alt={displayName}
@@ -404,12 +414,14 @@ export function DashboardPage() {
               <h3 className="text-[13px] font-semibold uppercase tracking-[1px] text-text-muted flex items-center gap-2 before:content-[''] before:w-1 before:h-4 before:bg-accent before:rounded-full">
                 Active Corporate Projects
               </h3>
-              <button
-                onClick={() => setIsAddProjectOpen(true)}
-                className="px-3.5 py-1.5 bg-accent text-bg font-semibold text-[12px] rounded-md hover:opacity-90 hover:-translate-y-px hover:shadow-[0_0_20px_rgba(34,197,94,0.25)] transition-all flex items-center gap-1.5"
-              >
-                <Plus size={14} /> New Project
-              </button>
+              {isGithubUser && (
+                <button
+                  onClick={() => setIsAddProjectOpen(true)}
+                  className="px-3.5 py-1.5 bg-accent text-bg font-semibold text-[12px] rounded-md hover:opacity-90 hover:-translate-y-px hover:shadow-[0_0_20px_rgba(34,197,94,0.25)] transition-all flex items-center gap-1.5"
+                >
+                  <Plus size={14} /> New Project
+                </button>
+              )}
             </div>
 
             {isLoadingProjects ? (
@@ -421,15 +433,23 @@ export function DashboardPage() {
               <div className="flex flex-col items-center justify-center py-20 border border-border border-dashed rounded-xl text-center p-8 bg-bg-card mb-2">
                 <FolderGit2 size={36} className="text-text-muted mb-4" />
                 <h4 className="text-sm font-semibold mb-1 text-text">No Projects Connected</h4>
-                <p className="text-xs text-text-secondary max-w-[280px] mx-auto mb-6">
-                  Hubungkan repositori Git pertama kamu untuk memulai mapping documentation dan task board.
-                </p>
-                <button
-                  onClick={() => setIsAddProjectOpen(true)}
-                  className="px-4 py-2 bg-accent text-bg text-xs font-semibold rounded-md hover:opacity-90 transition-opacity"
-                >
-                  Connect Git Repository
-                </button>
+                {isGithubUser ? (
+                  <>
+                    <p className="text-xs text-text-secondary max-w-[280px] mx-auto mb-6">
+                      Hubungkan repositori Git pertama kamu untuk memulai mapping documentation dan task board.
+                    </p>
+                    <button
+                      onClick={() => setIsAddProjectOpen(true)}
+                      className="px-4 py-2 bg-accent text-bg text-xs font-semibold rounded-md hover:opacity-90 transition-opacity"
+                    >
+                      Connect Git Repository
+                    </button>
+                  </>
+                ) : (
+                  <p className="text-xs text-text-secondary max-w-[280px] mx-auto mb-6">
+                    Menunggu invitation dari Project Owner. Hubungi admin untuk ditambahkan ke dalam tim.
+                  </p>
+                )}
               </div>
             ) : (
               <div className="flex flex-col gap-3.5 mb-8">
@@ -455,19 +475,23 @@ export function DashboardPage() {
               Quick Configuration Actions
             </h3>
             <div className="flex flex-wrap gap-3">
-              <button
-                onClick={() => setIsAddMemberOpen(true)}
-                className="px-4 py-2.5 bg-bg-elevated border border-border rounded-md text-[13px] font-medium hover:bg-bg-hover hover:border-border-hover transition-all flex items-center gap-2"
-              >
-                <Users size={16} className="text-blue-400" /> Add Team Member
-              </button>
-              <button
-                onClick={() => setIsAddProjectOpen(true)}
-                className="px-4 py-2.5 bg-bg-elevated border border-border rounded-md text-[13px] font-medium hover:bg-bg-hover hover:border-border-hover transition-all flex items-center gap-2"
-              >
-                <FolderGit2 size={16} className="text-amber-400" /> Index Git
-                Repository
-              </button>
+              {ownedProjects.length > 0 && (
+                <button
+                  onClick={() => setIsAddMemberOpen(true)}
+                  className="px-4 py-2.5 bg-bg-elevated border border-border rounded-md text-[13px] font-medium hover:bg-bg-hover hover:border-border-hover transition-all flex items-center gap-2"
+                >
+                  <Users size={16} className="text-blue-400" /> Add Team Member
+                </button>
+              )}
+              {isGithubUser && (
+                <button
+                  onClick={() => setIsAddProjectOpen(true)}
+                  className="px-4 py-2.5 bg-bg-elevated border border-border rounded-md text-[13px] font-medium hover:bg-bg-hover hover:border-border-hover transition-all flex items-center gap-2"
+                >
+                  <FolderGit2 size={16} className="text-amber-400" /> Index Git
+                  Repository
+                </button>
+              )}
               <button
                 onClick={loadProjects}
                 className="px-4 py-2.5 bg-transparent border border-dashed border-border-hover rounded-md text-[13px] font-medium hover:border-accent hover:text-accent transition-all flex items-center gap-2"
@@ -603,20 +627,17 @@ export function DashboardPage() {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-[11px] font-bold text-text-muted uppercase tracking-[0.5px] mb-1.5">
-              Select Target Project
-            </label>
-            <select
+            <SearchableDropdown
+              label="Select Target Project"
+              options={ownedProjects.map((proj) => ({
+                value: proj.id,
+                label: proj.name,
+                details: proj.github_repo,
+              }))}
               value={targetProjectId}
-              onChange={(e) => setTargetProjectId(e.target.value)}
-              className="w-full bg-bg border border-border rounded-md px-3.5 py-2 text-xs focus:border-accent outline-none transition-all cursor-pointer appearance-none"
-            >
-              {projects.map((proj) => (
-                <option key={proj.id} value={proj.id}>
-                  {proj.name} ({proj.github_repo})
-                </option>
-              ))}
-            </select>
+              onChange={setTargetProjectId}
+              placeholder="Search project by name or repo..."
+            />
           </div>
           <div>
             <SearchableDropdown
@@ -733,19 +754,22 @@ function ProjectCard({
       </div>
       <div className="flex flex-row sm:flex-col items-center sm:items-end gap-3 min-w-[120px] w-full sm:w-auto justify-between sm:justify-start">
         <div className="flex items-center">
-          {members.map((m, i) => (
-            <div
-              key={i}
-              className="w-7 h-7 rounded-full border-[2.5px] border-bg-card flex items-center justify-center text-[10px] font-bold text-white -ml-2 first:ml-0 relative hover:z-10 hover:scale-110 transition-transform overflow-hidden"
-              style={{ backgroundColor: m.avatarUrl ? undefined : m.color }}
-            >
-              {m.avatarUrl ? (
-                <img src={m.avatarUrl} alt={m.initial} className="w-full h-full object-cover" />
-              ) : (
-                m.initial
-              )}
-            </div>
-          ))}
+          {members.map((m, i) => {
+            const isGitHubUrl = m.avatarUrl && (m.avatarUrl.includes("githubusercontent.com") || m.avatarUrl.includes("github.com"));
+            return (
+              <div
+                key={i}
+                className="w-7 h-7 rounded-full border-[2.5px] border-bg-card flex items-center justify-center text-[10px] font-bold text-white -ml-2 first:ml-0 relative hover:z-10 hover:scale-110 transition-transform overflow-hidden"
+                style={{ backgroundColor: isGitHubUrl ? undefined : m.color }}
+              >
+                {isGitHubUrl ? (
+                  <img src={m.avatarUrl} alt={m.initial} className="w-full h-full object-cover" />
+                ) : (
+                  m.initial
+                )}
+              </div>
+            );
+          })}
         </div>
         <span
           className={`text-[11px] font-semibold px-3 py-1 rounded-full flex items-center gap-1.5 ${status === "Active" ? "bg-accent/10 text-accent border border-accent/20 before:w-1.5 before:h-1.5 before:bg-accent before:rounded-full before:animate-pulse" : "bg-text-muted/15 text-text-muted border border-border"}`}

@@ -250,6 +250,26 @@ export async function syncDocsToSupabase(
   } catch (pruneErr) {
     console.error("Failed to prune stale cached docs:", pruneErr);
   }
+
+  // Cache recent commits in cached_docs under virtual path '__commits__'
+  try {
+    const commits = await fetchRecentCommits(owner, repo, branch, token);
+    if (commits && commits.length > 0) {
+      const { error: commitsError } = await supabase.from("cached_docs").upsert(
+        {
+          project_id: projectId,
+          file_path: "__commits__",
+          content: JSON.stringify(commits),
+          synced_by: syncedBy || null,
+          synced_at: new Date().toISOString(),
+        },
+        { onConflict: "project_id,file_path" },
+      );
+      if (commitsError) console.error("Error caching commits:", commitsError);
+    }
+  } catch (commitErr) {
+    console.error("Failed to cache recent commits:", commitErr);
+  }
 }
 
 /**

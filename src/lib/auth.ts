@@ -2,6 +2,7 @@ import { supabase } from "./supabase";
 import { openUrl } from "@tauri-apps/plugin-opener";
 
 export async function signInWithProvider(provider: "github" | "google") {
+  localStorage.setItem('auth_attempt_provider', provider);
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider,
     options: {

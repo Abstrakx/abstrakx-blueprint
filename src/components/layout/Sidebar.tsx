@@ -79,20 +79,27 @@ export function Sidebar({ currentView, onViewChange, projectName, repoName, team
             {teamMembers.length === 0 ? (
               <div className="text-[11px] text-text-muted italic">No team members added</div>
             ) : (
-              teamMembers.map((member) => (
-                <div key={member.id} className="flex items-center gap-3">
-                  <div
-                    className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-bg shrink-0"
-                    style={{ backgroundColor: member.avatar_color || '#22c55e' }}
-                  >
-                    {member.name[0]?.toUpperCase() || '?'}
+              teamMembers.map((member) => {
+                const showAvatarImg = member.avatar_url && (member.avatar_url.includes('githubusercontent.com') || member.avatar_url.includes('github.com'));
+                return (
+                  <div key={member.id} className="flex items-center gap-3">
+                    <div
+                      className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-bg shrink-0 overflow-hidden"
+                      style={{ backgroundColor: showAvatarImg ? undefined : (member.avatar_color || '#22c55e') }}
+                    >
+                      {showAvatarImg ? (
+                        <img src={member.avatar_url} alt={member.name} className="w-full h-full object-cover" />
+                      ) : (
+                        member.name[0]?.toUpperCase() || '?'
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-[13px] font-medium text-text leading-none mb-1 truncate">{member.name}</div>
+                      <div className="text-[10px] text-text-muted leading-none capitalize">{member.title || member.role}</div>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <div className="text-[13px] font-medium text-text leading-none mb-1 truncate">{member.name}</div>
-                    <div className="text-[10px] text-text-muted leading-none capitalize">{member.title || member.role}</div>
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>

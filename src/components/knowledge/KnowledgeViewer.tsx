@@ -4,6 +4,7 @@ import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeSlug from 'rehype-slug';
 import { MermaidBlock } from './MermaidBlock';
+import 'highlight.js/styles/github-dark.css';
 import { DocFile } from '../../types';
 import { FileText, Folder, ChevronDown, ChevronRight, RefreshCw, Layers } from 'lucide-react';
 
@@ -211,7 +212,8 @@ export function KnowledgeViewer({
                     <code
                       className={`
                         font-mono text-xs px-1.5 py-0.5 rounded-sm bg-bg-card border border-border text-text
-                        ${match ? 'block p-4 my-5 overflow-x-auto leading-relaxed' : ''}
+                        ${match ? 'block p-4 my-5 overflow-x-auto leading-relaxed hljs' : ''}
+                        ${className || ''}
                       `}
                       {...props}
                     >

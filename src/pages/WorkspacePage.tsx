@@ -94,15 +94,40 @@ export function WorkspacePage() {
             setUserRole(memberRecord.role as 'owner' | 'developer' | 'viewer');
           } else {
             // Default role if not explicitly in team_members: Google auth -> viewer, GitHub -> developer
-            const provider = user?.app_metadata?.provider;
-            const hasGithubAuth = provider === 'github' || !!githubToken;
+            const hasGithubAuth = (
+              user?.app_metadata?.provider === 'github' ||
+              user?.app_metadata?.providers?.includes('github') ||
+              user?.identities?.some((id: any) => id.provider === 'github')
+            ) || !!githubToken;
             setUserRole(hasGithubAuth ? 'developer' : 'viewer');
           }
         }
 
-        // 4. Fetch recent GitHub commits
+        const loadCommitsFromCache = async (pId: string) => {
+          try {
+            const { data, error } = await supabase
+              .from('cached_docs')
+              .select('content')
+              .eq('project_id', pId)
+              .eq('file_path', '__commits__')
+              .single();
+            if (!error && data?.content) {
+              setRecentCommits(JSON.parse(data.content));
+            }
+          } catch (err) {
+            console.error('Failed to parse cached commits:', err);
+          }
+        };
+
+        // 4. Fetch recent GitHub commits or load from cache
         const [owner, repo] = (projData.github_repo || '').split('/');
-        if (owner && repo) {
+        const isGithubUser = (
+          user?.app_metadata?.provider === 'github' ||
+          user?.app_metadata?.providers?.includes('github') ||
+          user?.identities?.some((id: any) => id.provider === 'github')
+        ) && !!githubToken;
+
+        if (isGithubUser && owner && repo) {
           try {
             const commits = await fetchRecentCommits(
               owner,
@@ -113,7 +138,10 @@ export function WorkspacePage() {
             setRecentCommits(commits);
           } catch (gitErr) {
             console.error('Failed to fetch recent commits:', gitErr);
+            loadCommitsFromCache(projData.id);
           }
+        } else if (projData.id) {
+          loadCommitsFromCache(projData.id);
         }
       } catch (err: any) {
         console.error('Error loading workspace:', err);
@@ -147,13 +175,35 @@ export function WorkspacePage() {
           return;
         }
 
-        const reconstructedTree = reconstructTreeFromPaths(data.map(d => d.file_path));
+        // Filter out virtual __commits__ path from the doc tree and normalize paths to start with /
+        const filteredPaths = data
+          .map(d => {
+            let p = d.file_path;
+            if (p.startsWith('./')) {
+              p = p.substring(2);
+            } else if (p.startsWith('.')) {
+              p = p.substring(1);
+            }
+            if (!p.startsWith('/')) {
+              p = '/' + p;
+            }
+            return p;
+          })
+          .filter(p => p !== '/__commits__' && p !== '__commits__');
+
+        const reconstructedTree = reconstructTreeFromPaths(filteredPaths, docsPath);
         setDocsTree(sortDocsTree(reconstructedTree));
       };
 
       try {
-        if (userRole === 'viewer') {
-          // Viewers load doc structure cached in Supabase (Option B)
+        const canAccessGitHub = (
+          user?.app_metadata?.provider === 'github' ||
+          user?.app_metadata?.providers?.includes('github') ||
+          user?.identities?.some((id: any) => id.provider === 'github')
+        ) && !!githubToken && userRole !== 'viewer';
+
+        if (!canAccessGitHub) {
+          // Viewers or Google users load cached doc structure directly from Supabase
           await loadFromSupabaseCache();
         } else {
           // Developers load live docs tree structure from GitHub
@@ -162,7 +212,7 @@ export function WorkspacePage() {
             if (tree && tree.length > 0) {
               setDocsTree(sortDocsTree(tree));
             } else {
-              // Graceful Fallback if the tree is empty (e.g. no access to private repo)
+              // Graceful Fallback if the tree is empty
               console.log('No files fetched from GitHub, falling back to Supabase cache');
               await loadFromSupabaseCache();
             }
@@ -177,7 +227,7 @@ export function WorkspacePage() {
     };
 
     loadDocsTree();
-  }, [project, userRole, githubToken]);
+  }, [project, userRole, githubToken, user]);
 
   // Handle active document change - load file content
   useEffect(() => {
@@ -189,12 +239,20 @@ export function WorkspacePage() {
 
       // Helper function to load cached file content from Supabase
       const loadFromSupabaseCache = async () => {
+        const cleanPath = activeFilePath.startsWith('/') ? activeFilePath.substring(1) : activeFilePath;
+        const possiblePaths = [
+          activeFilePath,
+          cleanPath,
+          './' + cleanPath,
+          '.' + activeFilePath
+        ];
+
         const { data, error } = await supabase
           .from('cached_docs')
           .select('content')
           .eq('project_id', project.id)
-          .eq('file_path', activeFilePath)
-          .single();
+          .in('file_path', possiblePaths)
+          .maybeSingle();
 
         if (!error && data) {
           setDocContent(data.content);
@@ -204,11 +262,17 @@ export function WorkspacePage() {
       };
 
       try {
-        if (userRole === 'viewer') {
-          // Viewers load cached documentation content from Supabase
+        const canAccessGitHub = (
+          user?.app_metadata?.provider === 'github' ||
+          user?.app_metadata?.providers?.includes('github') ||
+          user?.identities?.some((id: any) => id.provider === 'github')
+        ) && !!githubToken && userRole !== 'viewer';
+
+        if (!canAccessGitHub) {
+          // Viewers or Google users load cached documentation content from Supabase
           const loaded = await loadFromSupabaseCache();
           if (!loaded) {
-            // Fallback to fetch live if missing in cache
+            // Fallback to fetch live if missing in cache (unlikely but safe)
             try {
               const liveContent = await fetchFileContent(owner, repo, activeFilePath, project.branch, githubToken || undefined);
               setDocContent(liveContent);
@@ -238,7 +302,7 @@ export function WorkspacePage() {
     };
 
     loadContent();
-  }, [activeFilePath, project, userRole, githubToken]);
+  }, [activeFilePath, project, userRole, githubToken, user]);
 
   // Load and Scan compiled notes
   useEffect(() => {
@@ -653,17 +717,26 @@ function sortDocsTree(tree: DocFile[]): DocFile[] {
     });
 }
 
-function reconstructTreeFromPaths(paths: string[]): DocFile[] {
+function reconstructTreeFromPaths(paths: string[], prefixToStrip?: string): DocFile[] {
   const root: DocFile[] = [];
+  const cleanPrefix = prefixToStrip ? prefixToStrip.replace(/^\//, '').replace(/\/$/, '') : '';
 
   for (const path of paths) {
-    const parts = path.split('/').filter(Boolean);
+    const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+    let parts = cleanPath.split('/').filter(Boolean);
+
+    if (cleanPrefix && parts[0] === cleanPrefix) {
+      parts = parts.slice(1);
+    }
+
     let currentLevel = root;
 
     for (let i = 0; i < parts.length; i++) {
       const part = parts[i];
       const isLast = i === parts.length - 1;
-      const currentPath = '/' + parts.slice(0, i + 1).join('/');
+
+      const pathParts = cleanPrefix ? [cleanPrefix, ...parts.slice(0, i + 1)] : parts.slice(0, i + 1);
+      const currentPath = '/' + pathParts.join('/');
 
       let existingNode = currentLevel.find(node => node.name === part);
 
