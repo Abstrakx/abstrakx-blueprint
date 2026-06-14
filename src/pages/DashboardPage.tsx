@@ -36,6 +36,7 @@ export function DashboardPage() {
   const [targetProjectId, setTargetProjectId] = useState("");
   const [memberRole, setMemberRole] = useState("developer");
   const [customTitle, setCustomTitle] = useState("");
+  const [ownerTitle, setOwnerTitle] = useState("Project Manager");
   const [profiles, setProfiles] = useState<any[]>([]);
   const [selectedProfileId, setSelectedProfileId] = useState("");
   const [isLoadingProfiles, setIsLoadingProfiles] = useState(false);
@@ -249,6 +250,7 @@ export function DashboardPage() {
           user_id: user?.id,
           name: displayName,
           role: "owner",
+          title: ownerTitle.trim() || "Project Manager",
           avatar_color: "#22c55e",
         });
 
@@ -416,7 +418,7 @@ export function DashboardPage() {
                 <div className="text-xs text-text-secondary">Loading projects from Supabase...</div>
               </div>
             ) : projects.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 border border-border border-dashed rounded-xl text-center p-8 bg-bg-card">
+              <div className="flex flex-col items-center justify-center py-20 border border-border border-dashed rounded-xl text-center p-8 bg-bg-card mb-2">
                 <FolderGit2 size={36} className="text-text-muted mb-4" />
                 <h4 className="text-sm font-semibold mb-1 text-text">No Projects Connected</h4>
                 <p className="text-xs text-text-secondary max-w-[280px] mx-auto mb-6">
@@ -560,6 +562,19 @@ export function DashboardPage() {
               className="w-full bg-bg border border-border rounded-md px-3.5 py-2 text-xs focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all"
               value={docsFolder}
               onChange={(e) => setDocsFolder(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold text-text-muted uppercase tracking-[0.5px] mb-1.5">
+              Your Role / Title in Project
+            </label>
+            <input
+              type="text"
+              className="w-full bg-bg border border-border rounded-md px-3.5 py-2 text-xs focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all placeholder:text-text-muted"
+              value={ownerTitle}
+              onChange={(e) => setOwnerTitle(e.target.value)}
+              placeholder="e.g. Project Manager, Lead Dev"
             />
           </div>
 

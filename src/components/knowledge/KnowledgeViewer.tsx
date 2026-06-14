@@ -68,46 +68,61 @@ export function KnowledgeViewer({
   const [headings, setHeadings] = useState<{ id: string; text: string; level: number }[]>([]);
   const [activeHeadingId, setActiveHeadingId] = useState<string>('');
 
-  // Extract headings from markdown text for the Table of Contents (ToC)
+  // Extract headings from DOM for ToC and setup IntersectionObserver
   useEffect(() => {
-    const activeContent = files.length === 0 ? SETUP_GUIDE_MD : content;
-    const headingLines = activeContent.split('\n').filter((line) => line.startsWith('## ') || line.startsWith('### '));
-    const parsedHeadings = headingLines.map((line) => {
-      const level = line.startsWith('## ') ? 2 : 3;
-      const text = line.replace(/^#{2,3}\s+/, '').trim();
-      // Generate standard markdown ID (lower case, replace spaces with hyphens)
-      const id = text
-        .toLowerCase()
-        .replace(/[^\w\s-]/g, '')
-        .replace(/\s+/g, '-');
-      return { id, text, level };
-    });
-    setHeadings(parsedHeadings);
-  }, [content, files]);
-
-  // Set up IntersectionObserver to track reading position and highlight active heading in ToC
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visibleEntry = entries.find((entry) => entry.isIntersecting);
-        if (visibleEntry) {
-          setActiveHeadingId(visibleEntry.target.id);
-        }
-      },
-      { rootMargin: '0px 0px -60% 0px', threshold: 0 }
-    );
-
-    // Observe all h2 and h3 elements inside markdown
-    const mdContainer = document.querySelector('.markdown-prose');
-    if (mdContainer) {
-      const headings = mdContainer.querySelectorAll('h2, h3');
-      headings.forEach((heading) => observer.observe(heading));
+    if (isLoadingContent) {
+      setHeadings([]);
+      setActiveHeadingId('');
+      return;
     }
 
-    return () => observer.disconnect();
+    let observer: IntersectionObserver;
+
+    // Use setTimeout to ensure ReactMarkdown has fully rendered the DOM in this cycle
+    const timer = setTimeout(() => {
+      const mdContainer = document.querySelector('.markdown-prose');
+      if (!mdContainer) return;
+
+      const headingElements = mdContainer.querySelectorAll('h2, h3');
+      
+      // 1. Build the ToC state directly from the rendered elements to guarantee exact ID matches
+      const parsedHeadings = Array.from(headingElements).map((el) => ({
+        id: el.id,
+        text: el.textContent || '',
+        level: el.tagName.toLowerCase() === 'h2' ? 2 : 3,
+      })).filter(h => h.id); // Only include headings that actually received an ID from rehype-slug
+
+      setHeadings(parsedHeadings);
+
+      if (parsedHeadings.length > 0 && !activeHeadingId) {
+        setActiveHeadingId(parsedHeadings[0].id);
+      }
+
+      // 2. Set up IntersectionObserver with better margins
+      observer = new IntersectionObserver(
+        (entries) => {
+          const visibleEntries = entries.filter(e => e.isIntersecting);
+          if (visibleEntries.length > 0) {
+            // Update active heading to the one currently intersecting in the view
+            setActiveHeadingId(visibleEntries[0].target.id);
+          }
+        },
+        { rootMargin: '-10px 0px -60% 0px', threshold: 0 }
+      );
+
+      headingElements.forEach((heading) => observer.observe(heading));
+    }, 50);
+
+    return () => {
+      clearTimeout(timer);
+      if (observer) {
+        observer.disconnect();
+      }
+    };
   }, [content, files, isLoadingContent]);
 
   const handleHeadingClick = (id: string) => {
+    setActiveHeadingId(id);
     const element = document.getElementById(id);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
