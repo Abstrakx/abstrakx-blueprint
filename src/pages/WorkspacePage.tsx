@@ -95,7 +95,8 @@ export function WorkspacePage() {
           } else {
             // Default role if not explicitly in team_members: Google auth -> viewer, GitHub -> developer
             const provider = user?.app_metadata?.provider;
-            setUserRole(provider === 'google' ? 'viewer' : 'developer');
+            const hasGithubAuth = provider === 'github' || !!githubToken;
+            setUserRole(hasGithubAuth ? 'developer' : 'viewer');
           }
         }
 
@@ -133,28 +134,42 @@ export function WorkspacePage() {
       const [owner, repo] = project.github_repo.split('/');
       const docsPath = project.docs_dir?.replace(/^\//, '') || 'docs';
 
+      // Helper function to load cached docs structure from Supabase
+      const loadFromSupabaseCache = async () => {
+        const { data, error } = await supabase
+          .from('cached_docs')
+          .select('file_path')
+          .eq('project_id', project.id);
+
+        if (error || !data || data.length === 0) {
+          console.log('No cached docs found in database.');
+          setDocsTree([]);
+          return;
+        }
+
+        const reconstructedTree = reconstructTreeFromPaths(data.map(d => d.file_path));
+        setDocsTree(sortDocsTree(reconstructedTree));
+      };
+
       try {
         if (userRole === 'viewer') {
           // Viewers load doc structure cached in Supabase (Option B)
-          const { data, error } = await supabase
-            .from('cached_docs')
-            .select('file_path')
-            .eq('project_id', project.id);
-
-          if (error || !data || data.length === 0) {
-            console.log('No cached docs found, falling back to git structures');
-            const tree = await fetchDocsTree(owner, repo, docsPath, project.branch, githubToken || undefined);
-            setDocsTree(sortDocsTree(tree));
-            return;
-          }
-
-          // Reconstruct nested structure from flat array of cached paths
-          const reconstructedTree = reconstructTreeFromPaths(data.map(d => d.file_path));
-          setDocsTree(sortDocsTree(reconstructedTree));
+          await loadFromSupabaseCache();
         } else {
           // Developers load live docs tree structure from GitHub
-          const tree = await fetchDocsTree(owner, repo, docsPath, project.branch, githubToken || undefined);
-          setDocsTree(sortDocsTree(tree));
+          try {
+            const tree = await fetchDocsTree(owner, repo, docsPath, project.branch, githubToken || undefined);
+            if (tree && tree.length > 0) {
+              setDocsTree(sortDocsTree(tree));
+            } else {
+              // Graceful Fallback if the tree is empty (e.g. no access to private repo)
+              console.log('No files fetched from GitHub, falling back to Supabase cache');
+              await loadFromSupabaseCache();
+            }
+          } catch (gitErr) {
+            console.error('Failed to fetch docs tree from GitHub, falling back to Supabase cache:', gitErr);
+            await loadFromSupabaseCache();
+          }
         }
       } catch (err) {
         console.error('Error loading docs tree:', err);
@@ -172,27 +187,48 @@ export function WorkspacePage() {
       setIsLoadingContent(true);
       const [owner, repo] = project.github_repo.split('/');
 
+      // Helper function to load cached file content from Supabase
+      const loadFromSupabaseCache = async () => {
+        const { data, error } = await supabase
+          .from('cached_docs')
+          .select('content')
+          .eq('project_id', project.id)
+          .eq('file_path', activeFilePath)
+          .single();
+
+        if (!error && data) {
+          setDocContent(data.content);
+          return true;
+        }
+        return false;
+      };
+
       try {
         if (userRole === 'viewer') {
           // Viewers load cached documentation content from Supabase
-          const { data, error } = await supabase
-            .from('cached_docs')
-            .select('content')
-            .eq('project_id', project.id)
-            .eq('file_path', activeFilePath)
-            .single();
-
-          if (!error && data) {
-            setDocContent(data.content);
-          } else {
-            // Fallback to fetch live if missing
-            const liveContent = await fetchFileContent(owner, repo, activeFilePath, project.branch, githubToken || undefined);
-            setDocContent(liveContent);
+          const loaded = await loadFromSupabaseCache();
+          if (!loaded) {
+            // Fallback to fetch live if missing in cache
+            try {
+              const liveContent = await fetchFileContent(owner, repo, activeFilePath, project.branch, githubToken || undefined);
+              setDocContent(liveContent);
+            } catch (err) {
+              console.error('Failed to load doc content from both Supabase and GitHub:', err);
+              setDocContent('# ⚠️ Error\nFailed to load content for this file.');
+            }
           }
         } else {
           // Developers fetch live file contents directly from GitHub
-          const liveContent = await fetchFileContent(owner, repo, activeFilePath, project.branch, githubToken || undefined);
-          setDocContent(liveContent);
+          try {
+            const liveContent = await fetchFileContent(owner, repo, activeFilePath, project.branch, githubToken || undefined);
+            setDocContent(liveContent);
+          } catch (gitErr) {
+            console.warn('Developer failed to fetch from GitHub, trying Supabase cache:', gitErr);
+            const loaded = await loadFromSupabaseCache();
+            if (!loaded) {
+              setDocContent('# ⚠️ Error\nFailed to load content for this file.');
+            }
+          }
         }
       } catch (err) {
         console.error('Error loading file content:', err);
