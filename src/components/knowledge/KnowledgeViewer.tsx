@@ -4,6 +4,7 @@ import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeSlug from 'rehype-slug';
 import { MermaidBlock } from './MermaidBlock';
+import { ZoomableImage } from './ZoomableImage';
 import 'highlight.js/styles/github-dark.css';
 import { DocFile } from '../../types';
 import { FileText, Folder, ChevronDown, ChevronRight, RefreshCw, Layers } from 'lucide-react';
@@ -85,7 +86,7 @@ export function KnowledgeViewer({
       if (!mdContainer) return;
 
       const headingElements = mdContainer.querySelectorAll('h2, h3');
-      
+
       // 1. Build the ToC state directly from the rendered elements to guarantee exact ID matches
       const parsedHeadings = Array.from(headingElements).map((el) => ({
         id: el.id,
@@ -244,6 +245,27 @@ export function KnowledgeViewer({
                 ol: ({ node, ...props }) => (
                   <ol className="list-decimal pl-5 mb-5 space-y-2 text-[14px] text-text-secondary" {...props} />
                 ),
+                img: ({ node, src, alt, ...props }) => {
+                  let finalSrc = src;
+                  // Transform Google Drive URLs to direct thumbnail URLs (bypasses recent hotlinking bans)
+                  if (src && src.includes('drive.google.com')) {
+                    // Match file/d/, open?id=, or uc?export=view&id=
+                    const match = /drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?.*?id=)([a-zA-Z0-9_-]+)/.exec(src);
+                    if (match && match[1]) {
+                      // Use thumbnail API which still allows hotlinking for public files
+                      finalSrc = `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1000`;
+                    }
+                  }
+                  return (
+                    <ZoomableImage
+                      src={finalSrc || ''}
+                      alt={alt}
+                      className="max-w-full h-auto rounded-lg border border-border"
+                      loading="lazy"
+                      {...props}
+                    />
+                  );
+                },
               }}
             >
               {files.length === 0 ? SETUP_GUIDE_MD : content}
