@@ -1,0 +1,11 @@
+{
+  "version": "0.2.0",
+  "notes": "Pembaruan sistem, integrasi OTA, dan perbaikan visual.",
+  "pub_date": "2026-06-22T04:02:59Z",
+  "platforms": {
+    "windows-x86_64": {
+      "signature": "ISI_DARI_FILE_MSI_ATAU_NSIS_ZIP_SIG",
+      "url": "https://github.com/Abstrakx/abstrakx-blueprint/releases/download/v0.2.0/abstrakx-blueprint_0.2.0_x64-setup.nsis.zip"
+    }
+  }
+}

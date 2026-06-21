@@ -2,12 +2,13 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../components/ui/Toast";
 import { Modal } from "../components/ui/Modal";
-import { LogOut, Plus, RefreshCw, FolderGit2, Users } from "lucide-react";
+import { LogOut, Plus, RefreshCw, FolderGit2, Users, Sparkles } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
 import { fetchUserRepos, fetchRepoBranches } from "../lib/github-user";
 import { SearchableDropdown } from "../components/ui/SearchableDropdown";
 import { syncDocsToSupabase } from "../lib/github";
+import { UpdaterModal } from "../components/updater/UpdaterModal";
 
 export function DashboardPage() {
   const { user, signOut, githubToken, activeProvider } = useAuth();
@@ -17,6 +18,7 @@ export function DashboardPage() {
   // Dialog / Modal states
   const [isAddProjectOpen, setIsAddProjectOpen] = useState(false);
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
+  const [isUpdaterOpen, setIsUpdaterOpen] = useState(false);
 
   // Projects and stats states
   const [projects, setProjects] = useState<any[]>([]);
@@ -104,6 +106,24 @@ export function DashboardPage() {
   useEffect(() => {
     loadProjects();
     loadDocsCount();
+
+    // Silently check if an update is available on startup
+    const checkUpdatesSilently = async () => {
+      const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+      if (!isTauri) return;
+
+      try {
+        const { check } = await import('@tauri-apps/plugin-updater');
+        const update = await check();
+        if (update) {
+          setIsUpdaterOpen(true);
+        }
+      } catch (err) {
+        console.error('Silent update check failed:', err);
+      }
+    };
+
+    checkUpdatesSilently();
   }, []);
 
   // Fetch registered user profiles when "Add Team Member" modal opens
@@ -493,6 +513,12 @@ export function DashboardPage() {
                 </button>
               )}
               <button
+                onClick={() => setIsUpdaterOpen(true)}
+                className="px-4 py-2.5 bg-bg-elevated border border-border rounded-md text-[13px] font-medium hover:bg-bg-hover hover:border-border-hover transition-all flex items-center gap-2"
+              >
+                <Sparkles size={16} className="text-green-400 animate-pulse" /> Check for Updates
+              </button>
+              <button
                 onClick={loadProjects}
                 className="px-4 py-2.5 bg-transparent border border-dashed border-border-hover rounded-md text-[13px] font-medium hover:border-accent hover:text-accent transition-all flex items-center gap-2"
               >
@@ -694,6 +720,11 @@ export function DashboardPage() {
           </div>
         </div>
       </Modal>
+
+      <UpdaterModal
+        isOpen={isUpdaterOpen}
+        onClose={() => setIsUpdaterOpen(false)}
+      />
     </div>
   );
 }
