@@ -55,7 +55,164 @@ You can create automatic team reminders directly in your markdown docs. The note
 \`\`\`markdown
 💡 NOTE: Iqbal - Ensure main database schema is migrated before running the new migration script.
 \`\`\`
+
+---
+
+### 5. Multi-Version POC Toggle (Tabs)
+You can compare different versions of your implementation side-by-side using the tab switcher container:
+
+:::tabs
+== POC 2 (Broadcast Only)
+\`\`\`java
+public class ARBridgeUnity extends BroadcastReceiver {
+    // Simple broadcast listener
+}
+\`\`\`
+== POC 3 (Bidirectional Bridge)
+\`\`\`java
+public class ARBridgeUnity {
+    // Complex bidirectional callback handler
+}
+\`\`\`
+:::
 `;
+
+const getMarkdownComponents = () => ({
+  h1: ({ node, ...props }: any) => (
+    <h1 className="text-3xl font-bold tracking-tight text-text mb-6 border-b border-border pb-4 mt-0 font-sans" {...props} />
+  ),
+  h2: ({ node, ...props }: any) => (
+    <h2 className="text-xl font-bold tracking-tight text-text mb-4 mt-8 font-sans scroll-mt-6" {...props} />
+  ),
+  h3: ({ node, ...props }: any) => (
+    <h3 className="text-base font-semibold text-text mb-3 mt-6 font-sans scroll-mt-6" {...props} />
+  ),
+  p: ({ node, ...props }: any) => (
+    <p className="text-[14px] text-text-secondary leading-[1.7] mb-5 font-sans" {...props} />
+  ),
+  code: ({ node, className, children, ...props }: any) => {
+    const match = /language-(\w+)/.exec(className || '');
+    const isMermaid = match && match[1] === 'mermaid';
+
+    if (isMermaid) {
+      return <MermaidBlock code={String(children).replace(/\n$/, '')} />;
+    }
+
+    // Non-mermaid code blocks
+    return (
+      <code
+        className={`
+          font-mono text-xs px-1.5 py-0.5 rounded-sm bg-bg-card border border-border text-text
+          ${match ? 'block p-4 my-5 overflow-x-auto leading-relaxed hljs' : ''}
+          ${className || ''}
+        `}
+        {...props}
+      >
+        {children}
+      </code>
+    );
+  },
+  table: ({ node, ...props }: any) => (
+    <div className="overflow-x-auto my-6 border border-border rounded-xl">
+      <table className="w-full text-left border-collapse text-xs font-sans" {...props} />
+    </div>
+  ),
+  thead: ({ node, ...props }: any) => (
+    <thead className="bg-bg-elevated border-b border-border font-semibold text-text" {...props} />
+  ),
+  th: ({ node, ...props }: any) => (
+    <th className="p-3 font-semibold" {...props} />
+  ),
+  td: ({ node, ...props }: any) => (
+    <td className="p-3 border-b border-border text-text-secondary" {...props} />
+  ),
+  a: ({ node, ...props }: any) => (
+    <a className="text-accent hover:underline decoration-accent/30 font-medium" {...props} />
+  ),
+  ul: ({ node, ...props }: any) => (
+    <ul className="list-disc pl-5 mb-5 space-y-2 text-[14px] text-text-secondary" {...props} />
+  ),
+  ol: ({ node, ...props }: any) => (
+    <ol className="list-decimal pl-5 mb-5 space-y-2 text-[14px] text-text-secondary" {...props} />
+  ),
+  img: ({ node, src, alt, ...props }: any) => {
+    let finalSrc = src;
+    // Transform Google Drive URLs to direct thumbnail URLs (bypasses recent hotlinking bans)
+    if (src && src.includes('drive.google.com')) {
+      const match = /drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?.*?id=)([a-zA-Z0-9_-]+)/.exec(src);
+      if (match && match[1]) {
+        finalSrc = `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1000`;
+      }
+    }
+    return (
+      <ZoomableImage
+        src={finalSrc || ''}
+        alt={alt}
+        className="max-w-full h-auto rounded-lg border border-border"
+        loading="lazy"
+        {...props}
+      />
+    );
+  },
+});
+
+interface MarkdownTabsProps {
+  rawContent: string;
+}
+
+function MarkdownTabs({ rawContent }: MarkdownTabsProps) {
+  const [activeTab, setActiveTab] = useState(0);
+
+  const cleanContent = rawContent
+    .replace(/^\s*:::tabs\s*\n?/, '')
+    .replace(/\n?\s*:::\s*$/, '');
+  
+  const tabBlocks = cleanContent.split(/^\s*==\s+/m).filter(Boolean);
+  
+  const tabs = tabBlocks.map((block) => {
+    const lines = block.split('\n');
+    const label = lines[0].trim();
+    const content = lines.slice(1).join('\n').trim();
+    return { label, content };
+  });
+
+  if (tabs.length === 0) return null;
+
+  const components = getMarkdownComponents();
+
+  return (
+    <div className="my-6 border border-border rounded-xl bg-bg-card overflow-hidden shadow-lg">
+      {/* Tab Headers */}
+      <div className="flex border-b border-border bg-[#0b0b0b] p-1.5 gap-1 overflow-x-auto scrollbar-thin">
+        {tabs.map((tab, idx) => (
+          <button
+            key={idx}
+            onClick={() => setActiveTab(idx)}
+            className={`
+              px-4 py-2 text-xs font-semibold rounded-lg transition-all whitespace-nowrap
+              ${activeTab === idx
+                ? 'bg-accent/10 text-accent border border-accent/20 shadow-sm'
+                : 'text-text-secondary hover:text-text hover:bg-bg-hover border border-transparent'
+              }
+            `}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+      {/* Tab Content */}
+      <div className="p-5 bg-bg-card">
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          rehypePlugins={[rehypeHighlight, rehypeSlug]}
+          components={components}
+        >
+          {tabs[activeTab].content}
+        </ReactMarkdown>
+      </div>
+    </div>
+  );
+}
 
 export function KnowledgeViewer({
   files,
@@ -184,92 +341,33 @@ export function KnowledgeViewer({
           </div>
         ) : (
           <div className="max-w-[720px] mx-auto markdown-prose">
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              rehypePlugins={[rehypeHighlight, rehypeSlug]}
-              components={{
-                h1: ({ node, ...props }) => (
-                  <h1 className="text-3xl font-bold tracking-tight text-text mb-6 border-b border-border pb-4 mt-0 font-sans" {...props} />
-                ),
-                h2: ({ node, ...props }) => (
-                  <h2 className="text-xl font-bold tracking-tight text-text mb-4 mt-8 font-sans scroll-mt-6" {...props} />
-                ),
-                h3: ({ node, ...props }) => (
-                  <h3 className="text-base font-semibold text-text mb-3 mt-6 font-sans scroll-mt-6" {...props} />
-                ),
-                p: ({ node, ...props }) => (
-                  <p className="text-[14px] text-text-secondary leading-[1.7] mb-5 font-sans" {...props} />
-                ),
-                code: ({ node, className, children, ...props }) => {
-                  const match = /language-(\w+)/.exec(className || '');
-                  const isMermaid = match && match[1] === 'mermaid';
+            {(() => {
+              const docContent = files.length === 0 ? SETUP_GUIDE_MD : content;
+              const parts = docContent.split(/(\s*:::tabs[\s\S]*?:::)/g);
+              const components = getMarkdownComponents();
 
-                  if (isMermaid) {
-                    return <MermaidBlock code={String(children).replace(/\n$/, '')} />;
-                  }
-
-                  // Non-mermaid code blocks
+              return parts.map((part, index) => {
+                if (part.trim().startsWith(':::tabs')) {
                   return (
-                    <code
-                      className={`
-                        font-mono text-xs px-1.5 py-0.5 rounded-sm bg-bg-card border border-border text-text
-                        ${match ? 'block p-4 my-5 overflow-x-auto leading-relaxed hljs' : ''}
-                        ${className || ''}
-                      `}
-                      {...props}
-                    >
-                      {children}
-                    </code>
-                  );
-                },
-                table: ({ node, ...props }) => (
-                  <div className="overflow-x-auto my-6 border border-border rounded-xl">
-                    <table className="w-full text-left border-collapse text-xs font-sans" {...props} />
-                  </div>
-                ),
-                thead: ({ node, ...props }) => (
-                  <thead className="bg-bg-elevated border-b border-border font-semibold text-text" {...props} />
-                ),
-                th: ({ node, ...props }) => (
-                  <th className="p-3 font-semibold" {...props} />
-                ),
-                td: ({ node, ...props }) => (
-                  <td className="p-3 border-b border-border text-text-secondary" {...props} />
-                ),
-                a: ({ node, ...props }) => (
-                  <a className="text-accent hover:underline decoration-accent/30 font-medium" {...props} />
-                ),
-                ul: ({ node, ...props }) => (
-                  <ul className="list-disc pl-5 mb-5 space-y-2 text-[14px] text-text-secondary" {...props} />
-                ),
-                ol: ({ node, ...props }) => (
-                  <ol className="list-decimal pl-5 mb-5 space-y-2 text-[14px] text-text-secondary" {...props} />
-                ),
-                img: ({ node, src, alt, ...props }) => {
-                  let finalSrc = src;
-                  // Transform Google Drive URLs to direct thumbnail URLs (bypasses recent hotlinking bans)
-                  if (src && src.includes('drive.google.com')) {
-                    // Match file/d/, open?id=, or uc?export=view&id=
-                    const match = /drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?.*?id=)([a-zA-Z0-9_-]+)/.exec(src);
-                    if (match && match[1]) {
-                      // Use thumbnail API which still allows hotlinking for public files
-                      finalSrc = `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1000`;
-                    }
-                  }
-                  return (
-                    <ZoomableImage
-                      src={finalSrc || ''}
-                      alt={alt}
-                      className="max-w-full h-auto rounded-lg border border-border"
-                      loading="lazy"
-                      {...props}
+                    <MarkdownTabs
+                      key={index}
+                      rawContent={part}
                     />
                   );
-                },
-              }}
-            >
-              {files.length === 0 ? SETUP_GUIDE_MD : content}
-            </ReactMarkdown>
+                }
+
+                return (
+                  <ReactMarkdown
+                    key={index}
+                    remarkPlugins={[remarkGfm]}
+                    rehypePlugins={[rehypeHighlight, rehypeSlug]}
+                    components={components}
+                  >
+                    {part}
+                  </ReactMarkdown>
+                );
+              });
+            })()}
           </div>
         )}
       </main>
